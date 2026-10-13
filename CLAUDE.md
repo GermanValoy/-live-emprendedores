@@ -1,4 +1,4 @@
-# Live para Emprendedores — Guía del proyecto
+# Tu Feria Live — Guía del proyecto
 
 > Este archivo es la referencia principal del proyecto. Leelo completo antes de cualquier tarea.
 > Idioma de trabajo: **español (Argentina)**. Toda la interfaz, mensajes y textos al usuario van en español rioplatense (voseo).
@@ -14,14 +14,21 @@ Plataforma de ventas en vivo para emprendedoras y feriantes de **Tucumán, Argen
 - Asequible: costos de infraestructura bajos y variables durante el piloto.
 - Reglas claras y moderación humana de la plataforma (productos prohibidos, términos y condiciones), pero la emprendedora controla su sala.
 
-## 2. Modelo de negocio
+## 2. Marca
+
+- **Nombre**: Tu Feria Live.
+- **Eslogan (provisorio)**: "Vendé en vivo, sin que nadie te corte".
+- **Origen**: Tucumán, pero el nombre no menciona la provincia a propósito, para poder expandirse a otras regiones sin cambiar de marca.
+- **Dominio candidato**: `tuferia.live`.
+
+## 3. Modelo de negocio
 
 - **Mensualidad fija** que paga cada emprendedora. **La plataforma NO cobra comisión por venta** y no toca el dinero de las ventas.
 - Etapa inicial **gratuita**: el abono recién se cobra cuando la plataforma esté funcional y con clientas usándola.
 - El monto se define más adelante, tras un análisis de mercado.
 - El cobro de la mensualidad (suscripciones) se implementa en una fase posterior; no forma parte del MVP.
 
-## 3. Stack
+## 4. Stack
 
 | Capa | Tecnología |
 |---|---|
@@ -52,7 +59,7 @@ CLOUDFLARE_STREAM_API_TOKEN=   # se crea en la Fase 1
 
 Mantener un `.env.example` con los nombres y sin valores.
 
-## 4. Glosario del dominio
+## 5. Glosario del dominio
 
 - **Emprendedora / vendedora**: dueña de una tienda; transmite en vivo.
 - **Tienda (store)**: perfil público de la emprendedora con catálogo y sus datos de cobro (alias).
@@ -64,7 +71,7 @@ Mantener un `.env.example` con los nombres y sin valores.
 - **Carrito del vivo**: modo en que los códigos ganados se acumulan y se pagan todos juntos al final.
 - **Falta**: reclamo ganado y no pagado; afecta la reputación de la compradora.
 
-## 5. Función estrella: "Código en vivo"
+## 6. Función estrella: "Código en vivo"
 
 Flujo actual en Facebook: la vendedora muestra el producto, dice "se lo lleva con el código ROJO", la primera que lo escribe en el chat gana, la vendedora le pasa el alias por mensaje y espera la transferencia. Todo manual.
 
@@ -73,14 +80,14 @@ Flujo en la plataforma:
 2. El código se muestra superpuesto en el video ("Código ROJO – $8.000").
 3. Las compradoras escriben el código en el chat. Detección automática tolerante a mayúsculas, tildes y signos.
 4. Adjudicación **atómica en PostgreSQL** (función con transacción y bloqueo de fila): nunca dos ganadoras para la misma unidad.
-5. La ganadora recibe un aviso con los **datos de pago** (ver sección 6) y un plazo configurable.
+5. La ganadora recibe un aviso con los **datos de pago** (ver sección 7) y un plazo configurable.
 6. Si vence el plazo sin pago informado → pasa automáticamente a la siguiente de la lista de espera y se registra una falta.
 7. Pago confirmado → pedido "Pagado" → se piden datos de entrega (retiro en feria, punto de encuentro, envío).
 8. Al terminar el vivo, la vendedora recibe un resumen agrupado por compradora.
 
 Configuraciones de la vendedora: **pago por prenda** o **carrito del vivo**; plazo de pago; asignación manual; anular/liberar código; stock > 1 por código.
 
-## 6. Pagos
+## 7. Pagos
 
 **La plataforma no procesa ni intermedia pagos.** El dinero va siempre directo de la compradora a la emprendedora.
 
@@ -98,7 +105,7 @@ Configuraciones de la vendedora: **pago por prenda** o **carrito del vivo**; pla
 ### Regla de arquitectura
 Programar los pagos como un **módulo intercambiable** (`lib/payments/` con una interfaz común, ej. `PaymentMethod`), donde el modo alias es la primera implementación. El resto de la app no debe depender de un proveedor concreto.
 
-## 7. Modelo de datos inicial
+## 8. Modelo de datos inicial
 
 `users`, `stores` (incluye alias y titular de cobro), `store_members` (ayudantes), `products`, `live_sessions`, `live_codes`, `claims`, `chat_messages`, `orders`, `order_items`, `payment_reports` (pago informado por la compradora + comprobante + confirmación de la vendedora), `follows`, `buyer_reputation`, `moderation_actions` (sala), `reports` (plataforma).
 
@@ -106,7 +113,7 @@ Programar los pagos como un **módulo intercambiable** (`lib/payments/` con una 
 - Montos en **centavos enteros (ARS)**, nunca en float.
 - Fechas en UTC; mostrar en zona `America/Argentina/Tucuman`.
 
-## 8. Seguridad (no negociable)
+## 9. Seguridad (no negociable)
 
 - Secretos solo en variables de entorno; `.env.local` en `.gitignore`.
 - `SUPABASE_SECRET_KEY` y tokens de Cloudflare: **solo en el servidor**, nunca en código de cliente.
@@ -115,7 +122,7 @@ Programar los pagos como un **módulo intercambiable** (`lib/payments/` con una 
 - Para reclamar un código hay que tener sesión iniciada; mirar y comentar puede ser libre.
 - Validar en el servidor todo lo que llega del cliente.
 
-## 9. Plan por fases
+## 10. Plan por fases
 
 **Fase 0 – Bases**: proyecto Next.js + Supabase + Drizzle, sistema de diseño (colores, tipografía, componentes base), login, estructura de carpetas, CI con tests, deploy en Vercel.
 
@@ -125,13 +132,13 @@ Programar los pagos como un **módulo intercambiable** (`lib/payments/` con una 
 
 **Fase 3 – Monetización y crecimiento**: suscripción mensual de las emprendedoras (monto según análisis de mercado), QR interoperable con confirmación automática, "En vivo ahora" y descubrimiento por categoría, publicidad, agentes de IA, apps nativas si hace falta.
 
-## 10. Ideas pendientes (se definen en el camino)
+## 11. Ideas pendientes (se definen en el camino)
 
 - Agentes de IA como moderadores del chat y asistentes de la vendedora.
 - Más seguridad para emprendedoras y compradoras (verificación de identidad de la vendedora, reputación pública, denuncias).
 - Videos promocionales para invitar feriantes (posible uso de HyperFrames).
 
-## 11. Forma de trabajo
+## 12. Forma de trabajo
 
 - Usar **Superpowers**: brainstorming → writing-plans → ejecución con TDD → verificación antes de dar algo por terminado.
 - **Planificar antes de construir**: no escribir código sin un plan aprobado por el dueño del proyecto.

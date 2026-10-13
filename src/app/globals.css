@@ -1,0 +1,119 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+/* El modo oscuro sigue la preferencia del celular. */
+@custom-variant dark (@media (prefers-color-scheme: dark));
+
+@theme inline {
+  --font-sans: var(--font-bricolage);
+  --font-heading: var(--font-bricolage);
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-vivo: var(--vivo);
+  --color-codigo: var(--codigo);
+  --color-codigo-fondo: var(--codigo-fondo);
+  --color-exito: var(--exito);
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
+}
+
+/*
+ * Movimiento: solo se animan transform/scale y opacity (fluido en celulares de gama media).
+ * Nada de la interfaz supera los 300 ms; las salidas son ~70 % de la entrada.
+ * Con "reducir movimiento" se quitan desplazamientos y escalas (variantes motion-safe:).
+ */
+@theme {
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1); /* todo lo que entra o sale */
+  --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1); /* algo que se mueve dentro de la pantalla */
+  --ease-sheet: cubic-bezier(0.32, 0.72, 0, 1); /* paneles que suben desde abajo */
+}
+
+:root {
+  --duracion-instant: 100ms; /* respuesta al tocar */
+  --duracion-fast: 150ms; /* cambios de color y estado */
+  --duracion-base: 200ms; /* avisos, menús, código nuevo sobre el video */
+  --duracion-sheet: 280ms; /* paneles desde abajo */
+  --duracion-festejo: 400ms; /* solo "¡Ganaste!" */
+}
+
+/* Paleta "Lapacho y limón": lapacho (flor de Tucumán) y limón (su fruto insignia). */
+:root {
+  --radius: 0.875rem;
+  --background: #ffffff;
+  --foreground: #20131c;
+  --card: #ffffff;
+  --card-foreground: #20131c;
+  --popover: #ffffff;
+  --popover-foreground: #20131c;
+  --primary: #b0135f; /* lapacho: 6,8:1 con texto blanco */
+  --primary-foreground: #ffffff;
+  --secondary: #f7eef2;
+  --secondary-foreground: #20131c;
+  --muted: #f7eef2;
+  --muted-foreground: #6b5560;
+  --accent: #fce4ee;
+  --accent-foreground: #20131c;
+  --destructive: #b42318;
+  --border: #eadce3;
+  --input: #eadce3;
+  --ring: #b0135f;
+  --vivo: #d7261e; /* rojo del cartel EN VIVO: 5:1 con texto blanco */
+  --codigo: #f5d90a; /* limón: solo para los códigos en vivo */
+  --codigo-fondo: #20131c;
+  --exito: #2f7d32; /* hoja: confirmaciones y "Pagado" */
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #160d13;
+    --foreground: #f8eff4;
+    --card: #22141d;
+    --card-foreground: #f8eff4;
+    --popover: #22141d;
+    --popover-foreground: #f8eff4;
+    --primary: #c2186b; /* 5,7:1 con texto blanco */
+    --secondary: #2e1c27;
+    --secondary-foreground: #f8eff4;
+    --muted: #2e1c27;
+    --muted-foreground: #c9b3bf;
+    --accent: #3d1b2e;
+    --accent-foreground: #f8eff4;
+    --destructive: #f2685d;
+    --border: #3a2632;
+    --input: #3a2632;
+    --ring: #e0549a;
+    --codigo-fondo: #000000;
+    --exito: #5bbf60;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+  }
+}

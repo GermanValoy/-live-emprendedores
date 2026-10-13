@@ -16,7 +16,7 @@ La Fase 0 es **solo para uso interno** (el dueño del proyecto y el equipo). No 
 | Tema | Decisión | Motivo |
 |---|---|---|
 | Login | Solo **Google** en la Fase 0; **código por email** como alternativa en la Fase 1. **Sin login por teléfono ni SMS**. El WhatsApp se pide como dato de contacto para las entregas (Fase 1), sin verificar | Los SMS cuestan por mensaje y la plataforma debe ser asequible. Todo Android ya tiene cuenta de Google; el código por email cubre a quien no la usa, gratis dentro del cupo de un servicio de envío como Resend. Se descarta Facebook para no depender de una cuenta que puede ser cerrada |
-| Identidad visual | Estilo **B · Vivo y vibrante** | Elegido por el dueño entre tres propuestas |
+| Identidad visual | **Lapacho y limón** (reemplazó al estilo B "Vivo y vibrante") | Elegida por el dueño entre tres propuestas basadas en el norte argentino |
 | Entornos | **Un solo proyecto de Supabase** (São Paulo, ya creado) para desarrollo y la versión publicada; el proyecto de producción se crea en la Fase 1, antes del piloto | Simple, gratis, sin instalar Docker; todos los cambios de base de datos quedan en migraciones repetibles |
 | Pantallas | Inicio simple + pantalla "Hola, [nombre]" | Alcanza para verificar que todo funciona; la página de presentación para feriantes se hace cerca del piloto |
 | Gestor de paquetes | **npm** | Ya instalado (Node 22) |
@@ -53,21 +53,44 @@ No se crean carpetas para funciones de fases futuras (pagos, video, chat): cada 
 
 Todos los valores se definen una sola vez como variables de diseño (colores, letra, radios, sombras) y las pantallas los usan por nombre, nunca con valores sueltos.
 
-### Colores (punto de partida, a ajustar por contraste)
+### Colores: "Lapacho y limón"
 
-| Uso | Color base |
+Reemplaza al estilo B original (fucsia, coral, violeta) por decisión del dueño. Inspirada en el lapacho rosado que florece en Tucumán y en el limón, fruto insignia de la provincia.
+
+| Uso | Color |
 |---|---|
-| Principal (botones importantes, marca) | Fucsia `#e6197a` |
-| Acompañante (degradés, detalles) | Coral `#ff7a3d` |
-| Secundario (nombres en el chat, elementos de apoyo) | Violeta `#7b4bd6` |
-| Exclusivo de los códigos en vivo | Amarillo `#ffd23f` sobre fondo oscuro `#1d1530` |
-| Exclusivo del cartel "EN VIVO" | Rojo vivo `#ff3b5c` |
-| Mensajes de éxito / error | Verde y rojo suaves |
-| Texto principal | `#1d1530` |
+| Principal (botones importantes, marca) | Lapacho `#B0135F` (modo oscuro `#C2186B`) |
+| Exclusivo de los códigos en vivo | Limón `#F5D90A` sobre `#20131C` |
+| Confirmaciones y "Pagado" | Hoja `#2F7D32` |
+| Exclusivo del cartel "EN VIVO" | Rojo `#D7261E` |
+| Error | `#B42318` |
+| Texto principal | Ciruela oscuro `#20131C` |
+| Fondo | Blanco `#FFFFFF` (modo oscuro `#160D13`) |
 
-- **Letra**: Outfit para títulos y texto.
+- **Letra**: Bricolage Grotesque, una sola familia para títulos y texto. Códigos y precios en extra negrita con números tabulares.
+- **Sin degradés de texto** ni recursos decorativos genéricos: lo único que "grita" es la etiqueta del código en limón.
 - **Contraste**: todo texto debe cumplir al menos el nivel AA de accesibilidad (4,5:1 en texto normal). Si un tono no alcanza, se oscurece sin perder el estilo.
 - **Modo oscuro**: la app sigue la preferencia del celular.
+
+### Movimiento
+
+Pensado para celulares de gama media: solo se animan tamaño/posición (`transform`, `scale`) y transparencia, nunca `all` ni desenfoques.
+
+| Variable | Valor | Uso |
+|---|---|---|
+| `--duracion-instant` | 100 ms | Respuesta al tocar (botones se achican a 0,97) |
+| `--duracion-fast` | 150 ms | Cambios de color y estado |
+| `--duracion-base` | 200 ms | Avisos, menús, código nuevo sobre el video |
+| `--duracion-sheet` | 280 ms | Paneles que suben desde abajo |
+| `--duracion-festejo` | 400 ms | Solo "¡Ganaste!" |
+| `ease-out` | `cubic-bezier(0.23, 1, 0.32, 1)` | Todo lo que entra o sale |
+| `ease-in-out` | `cubic-bezier(0.77, 0, 0.175, 1)` | Movimiento dentro de la pantalla |
+| `ease-sheet` | `cubic-bezier(0.32, 0.72, 0, 1)` | Paneles desde abajo |
+
+- Las salidas duran ~70 % de la entrada. Nada de la interfaz supera los 300 ms salvo el festejo.
+- Los mensajes del chat no se animan (llegan demasiados por vivo).
+- Los efectos al pasar el mouse solo existen en dispositivos con mouse.
+- Con "reducir movimiento" activado en el teléfono se quitan desplazamientos y escalas; quedan solo fundidos de transparencia y el punto de "EN VIVO" queda fijo.
 
 ### Piezas base
 
@@ -80,7 +103,7 @@ Una ruta interna (`/diseno`) que muestra todas las piezas en modo claro y oscuro
 ## 5. App instalable (PWA)
 
 - Archivo de manifiesto con nombre "Tu Feria Live", colores de la marca y apertura a pantalla completa.
-- Ícono provisorio: "TF" sobre un degradé fucsia–coral, en los tamaños que piden Android e iPhone. Se reemplaza un solo archivo de origen cuando haya logo definitivo.
+- Ícono provisorio: "TF" blanco sobre lapacho con una raya limón, en los tamaños que piden Android e iPhone. Se reemplaza un solo archivo de origen cuando haya logo definitivo.
 - Sin conexión: solo se muestra un mensaje amable ("Sin conexión, revisá tu internet"). No se guarda contenido para uso offline.
 
 ## 6. Login
@@ -168,7 +191,7 @@ Tiendas, productos, sala en vivo, video, chat, Código en vivo, pagos, código p
 
 La Fase 0 está terminada cuando:
 
-1. La app está publicada en Vercel con el estilo B.
+1. La app está publicada en Vercel con el estilo "Lapacho y limón".
 2. El dueño del proyecto entra con su cuenta de Google, ve "Hola, [nombre]" con su foto y puede salir (verificado a mano).
 3. La app se puede instalar en el celular con el ícono "TF".
 4. La tabla `users` se llena sola y cada persona solo puede ver su propia fila.

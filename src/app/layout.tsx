@@ -1,10 +1,14 @@
 import type { Metadata, Viewport } from "next";
-import { Outfit } from "next/font/google";
+import { Bricolage_Grotesque } from "next/font/google";
 import { AvisoSinConexion } from "@/components/aviso-sin-conexion";
 import { Toaster } from "@/components/ui/sonner";
 import "./globals.css";
 
-const outfit = Outfit({ subsets: ["latin"], variable: "--font-outfit" });
+const bricolage = Bricolage_Grotesque({
+  subsets: ["latin"],
+  variable: "--font-bricolage",
+  axes: ["opsz"],
+});
 
 export const metadata: Metadata = {
   title: "Tu Feria Live",
@@ -15,12 +19,12 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#d1106d",
+  themeColor: "#b0135f",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="es-AR" className={outfit.variable}>
+    <html lang="es-AR" className={bricolage.variable}>
       <body>
         <AvisoSinConexion />
         {children}

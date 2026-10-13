@@ -6,8 +6,8 @@
 @custom-variant dark (@media (prefers-color-scheme: dark));
 
 @theme inline {
-  --font-sans: var(--font-outfit);
-  --font-heading: var(--font-outfit);
+  --font-sans: var(--font-bricolage);
+  --font-heading: var(--font-bricolage);
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
@@ -26,8 +26,6 @@
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
-  --color-coral: var(--coral);
-  --color-violeta: var(--violeta);
   --color-vivo: var(--vivo);
   --color-codigo: var(--codigo);
   --color-codigo-fondo: var(--codigo-fondo);
@@ -41,55 +39,73 @@
   --radius-4xl: calc(var(--radius) * 2.6);
 }
 
-/* Fucsia de botones: #d1106d (con texto blanco da 5,3:1; el #e6197a original no llega a 4,5:1). */
+/*
+ * Movimiento: solo se animan transform/scale y opacity (fluido en celulares de gama media).
+ * Nada de la interfaz supera los 300 ms; las salidas son ~70 % de la entrada.
+ * Con "reducir movimiento" se quitan desplazamientos y escalas (variantes motion-safe:).
+ */
+@theme {
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1); /* todo lo que entra o sale */
+  --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1); /* algo que se mueve dentro de la pantalla */
+  --ease-sheet: cubic-bezier(0.32, 0.72, 0, 1); /* paneles que suben desde abajo */
+}
+
+:root {
+  --duracion-instant: 100ms; /* respuesta al tocar */
+  --duracion-fast: 150ms; /* cambios de color y estado */
+  --duracion-base: 200ms; /* avisos, menús, código nuevo sobre el video */
+  --duracion-sheet: 280ms; /* paneles desde abajo */
+  --duracion-festejo: 400ms; /* solo "¡Ganaste!" */
+}
+
+/* Paleta "Lapacho y limón": lapacho (flor de Tucumán) y limón (su fruto insignia). */
 :root {
   --radius: 0.875rem;
   --background: #ffffff;
-  --foreground: #1d1530;
+  --foreground: #20131c;
   --card: #ffffff;
-  --card-foreground: #1d1530;
+  --card-foreground: #20131c;
   --popover: #ffffff;
-  --popover-foreground: #1d1530;
-  --primary: #d1106d;
+  --popover-foreground: #20131c;
+  --primary: #b0135f; /* lapacho: 6,8:1 con texto blanco */
   --primary-foreground: #ffffff;
-  --secondary: #f4f0fa;
-  --secondary-foreground: #1d1530;
-  --muted: #f4f0fa;
-  --muted-foreground: #5f5577;
-  --accent: #ffe9f1;
-  --accent-foreground: #1d1530;
-  --destructive: #c81e3a;
-  --border: #e6e0f0;
-  --input: #e6e0f0;
-  --ring: #e6197a;
-  --coral: #ff7a3d;
-  --violeta: #6d3fcc;
-  --vivo: #e11d48;
-  --codigo: #ffd23f;
-  --codigo-fondo: #1d1530;
-  --exito: #15803d;
+  --secondary: #f7eef2;
+  --secondary-foreground: #20131c;
+  --muted: #f7eef2;
+  --muted-foreground: #6b5560;
+  --accent: #fce4ee;
+  --accent-foreground: #20131c;
+  --destructive: #b42318;
+  --border: #eadce3;
+  --input: #eadce3;
+  --ring: #b0135f;
+  --vivo: #d7261e; /* rojo del cartel EN VIVO: 5:1 con texto blanco */
+  --codigo: #f5d90a; /* limón: solo para los códigos en vivo */
+  --codigo-fondo: #20131c;
+  --exito: #2f7d32; /* hoja: confirmaciones y "Pagado" */
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #120d1f;
-    --foreground: #f6f2fb;
-    --card: #1d1530;
-    --card-foreground: #f6f2fb;
-    --popover: #1d1530;
-    --popover-foreground: #f6f2fb;
-    --secondary: #2a2040;
-    --secondary-foreground: #f6f2fb;
-    --muted: #2a2040;
-    --muted-foreground: #bdb3d1;
-    --accent: #3a1a33;
-    --accent-foreground: #f6f2fb;
-    --destructive: #f05a72;
-    --border: #2f2645;
-    --input: #2f2645;
-    --violeta: #b69cf5;
+    --background: #160d13;
+    --foreground: #f8eff4;
+    --card: #22141d;
+    --card-foreground: #f8eff4;
+    --popover: #22141d;
+    --popover-foreground: #f8eff4;
+    --primary: #c2186b; /* 5,7:1 con texto blanco */
+    --secondary: #2e1c27;
+    --secondary-foreground: #f8eff4;
+    --muted: #2e1c27;
+    --muted-foreground: #c9b3bf;
+    --accent: #3d1b2e;
+    --accent-foreground: #f8eff4;
+    --destructive: #f2685d;
+    --border: #3a2632;
+    --input: #3a2632;
+    --ring: #e0549a;
     --codigo-fondo: #000000;
-    --exito: #4ade80;
+    --exito: #5bbf60;
   }
 }
 

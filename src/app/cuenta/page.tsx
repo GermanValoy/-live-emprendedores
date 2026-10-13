@@ -30,7 +30,7 @@ async function Saludo() {
       ) : (
         <div
           aria-hidden="true"
-          className="flex size-24 items-center justify-center rounded-full bg-gradient-to-br from-primary to-coral text-4xl font-extrabold text-white"
+          className="flex size-24 items-center justify-center rounded-full bg-primary text-4xl font-extrabold text-white"
         >
           {inicial}
         </div>

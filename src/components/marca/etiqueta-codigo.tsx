@@ -14,7 +14,7 @@ export function EtiquetaCodigo({ codigo, centavos }: Props) {
         Código <strong className="font-extrabold text-codigo">{nombre}</strong>
       </span>
       <span aria-hidden="true">–</span>
-      <strong className="font-extrabold">{precio}</strong>
+      <strong className="font-extrabold tabular-nums">{precio}</strong>
     </div>
   );
 }

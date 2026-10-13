@@ -18,7 +18,7 @@ export default function InicioPage({ searchParams }: Props) {
   return (
     <main className="flex min-h-dvh flex-col items-center justify-center gap-6 p-6 text-center">
       <div className="flex flex-col gap-3">
-        <h1 className="bg-gradient-to-r from-primary to-coral bg-clip-text text-5xl font-extrabold text-transparent">
+        <h1 className="text-5xl font-extrabold tracking-tight text-primary">
           Tu Feria Live
         </h1>
         <p className="text-lg text-muted-foreground">Vendé en vivo, sin que nadie te corte</p>

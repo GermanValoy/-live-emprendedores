@@ -11,12 +11,10 @@ export const metadata: Metadata = {
 };
 
 const colores = [
-  ["Principal", "bg-primary"],
-  ["Coral", "bg-coral"],
-  ["Violeta", "bg-violeta"],
-  ["Código", "bg-codigo"],
+  ["Lapacho", "bg-primary"],
+  ["Limón", "bg-codigo"],
+  ["Hoja", "bg-exito"],
   ["En vivo", "bg-vivo"],
-  ["Éxito", "bg-exito"],
   ["Error", "bg-destructive"],
 ] as const;
 

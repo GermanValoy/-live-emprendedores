@@ -9,6 +9,10 @@ jobs:
   verificar:
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    env:
+      NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+      NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY }}
+      SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -22,6 +26,8 @@ jobs:
         run: npm run lint
       - name: Pruebas unitarias
         run: npm test
+      - name: Pruebas de integración con Supabase
+        run: npm run test:integracion
       - name: Armado de la app
         run: npm run build
       - name: Instalar navegador de pruebas

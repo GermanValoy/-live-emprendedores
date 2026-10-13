@@ -19,6 +19,19 @@ test("la muestra de diseño pide no aparecer en buscadores", async ({ page }) =>
   await expect(page.locator('meta[name="robots"]')).toHaveAttribute("content", /noindex/);
 });
 
+test("botones y campos tienen al menos 44 px de alto para tocarlos con el dedo", async ({ page }) => {
+  await page.goto("/diseno");
+  const elementos = [
+    page.getByRole("button", { name: "Entrar con Google" }),
+    page.getByRole("button", { name: "Secundario" }),
+    page.getByPlaceholder("Escribí un mensaje o un código…"),
+  ];
+  for (const elemento of elementos) {
+    const caja = await elemento.boundingBox();
+    expect(caja!.height).toBeGreaterThanOrEqual(44);
+  }
+});
+
 test("el fondo cambia en modo oscuro", async ({ page }) => {
   await page.emulateMedia({ colorScheme: "dark" });
   await page.goto("/diseno");

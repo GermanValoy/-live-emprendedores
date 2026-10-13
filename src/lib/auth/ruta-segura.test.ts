@@ -18,4 +18,10 @@ describe("rutaSegura", () => {
     expect(rutaSegura("/\\sitio-malo.com")).toBe("/cuenta");
     expect(rutaSegura("cuenta")).toBe("/cuenta");
   });
+
+  it("rechaza destinos que esconden otro sitio con tabulaciones o saltos de línea", () => {
+    expect(rutaSegura("/\t/sitio-malo.com")).toBe("/cuenta");
+    expect(rutaSegura("/\n/sitio-malo.com")).toBe("/cuenta");
+    expect(rutaSegura("/\r\n/sitio-malo.com")).toBe("/cuenta");
+  });
 });

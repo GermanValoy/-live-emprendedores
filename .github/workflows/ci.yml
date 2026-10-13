@@ -5,6 +5,10 @@ on:
     branches: [main, fase-0]
   pull_request:
 
+# El token de GitHub de este flujo solo puede leer el repositorio.
+permissions:
+  contents: read
+
 jobs:
   verificar:
     runs-on: ubuntu-latest
@@ -12,7 +16,7 @@ jobs:
     env:
       NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
       NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY }}
-      SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+    # SUPABASE_SECRET_KEY va solo en los pasos que la usan, nunca en la instalación ni el armado.
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -28,12 +32,16 @@ jobs:
         run: npm test
       - name: Pruebas de integración con Supabase
         run: npm run test:integracion
+        env:
+          SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
       - name: Armado de la app
         run: npm run build
       - name: Instalar navegador de pruebas
         run: npx playwright install --with-deps chromium
       - name: Pruebas de punta a punta
         run: npm run test:e2e
+        env:
+          SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
       - uses: actions/upload-artifact@v4
         if: failure()
         with:

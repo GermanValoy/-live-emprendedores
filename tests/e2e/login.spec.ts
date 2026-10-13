@@ -42,6 +42,46 @@ test.describe("sin sesión", () => {
   });
 });
 
+test.describe("sesión vencida", () => {
+  let usuaria: UsuarioPrueba;
+
+  test.beforeAll(async () => {
+    usuaria = await crearUsuarioPrueba({ nombre: "Vencida Prueba" });
+  });
+
+  test.afterAll(async () => {
+    if (usuaria) await borrarUsuarioPrueba(usuaria.id);
+  });
+
+  test("al sacarla al inicio, también le borra la cookie que ya no sirve", async ({ request }) => {
+    const ref = new URL(process.env.NEXT_PUBLIC_SUPABASE_URL!).hostname.split(".")[0];
+    const nombre = `sb-${ref}-auth-token`;
+    const vencida = {
+      ...usuaria.sesion,
+      expires_at: Math.floor(Date.now() / 1000) - 3600,
+      refresh_token: "permiso-invalido",
+    };
+    const valor = `base64-${Buffer.from(JSON.stringify(vencida)).toString("base64url")}`;
+    // @supabase/ssr parte las cookies largas en pedazos de hasta 3180 caracteres.
+    const pedazos = valor.match(/.{1,3180}/g)!;
+    const cookie =
+      pedazos.length === 1
+        ? `${nombre}=${valor}`
+        : pedazos.map((p, i) => `${nombre}.${i}=${p}`).join("; ");
+
+    const respuesta = await request.get("/cuenta", { headers: { cookie }, maxRedirects: 0 });
+
+    expect(respuesta.status()).toBe(307);
+    expect(new URL(respuesta.headers()["location"]!, "http://localhost:3000").pathname).toBe("/");
+    const borradas = respuesta
+      .headersArray()
+      .filter((h) => h.name.toLowerCase() === "set-cookie" && h.value.startsWith(nombre))
+      .map((h) => h.value);
+    expect(borradas.length).toBeGreaterThan(0);
+    expect(borradas.every((v) => /max-age=0/i.test(v))).toBe(true);
+  });
+});
+
 test.describe("con sesión", () => {
   let usuaria: UsuarioPrueba;
 

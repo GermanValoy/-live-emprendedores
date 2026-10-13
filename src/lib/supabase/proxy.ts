@@ -11,6 +11,7 @@ function esProtegida(ruta: string) {
 /** Renueva la sesión en cada pedido y saca al inicio a quien entra sin sesión a una ruta protegida. */
 export async function updateSession(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request });
+  let encabezadosDeSesion: Record<string, string> = {};
   const { url, publishableKey } = supabaseEnv();
 
   const supabase = createServerClient(url, publishableKey, {
@@ -25,6 +26,7 @@ export async function updateSession(request: NextRequest) {
           supabaseResponse.cookies.set(name, value, options),
         );
         // Encabezados que evitan que una respuesta con sesión quede guardada en caché.
+        encabezadosDeSesion = { ...encabezadosDeSesion, ...headers };
         Object.entries(headers).forEach(([clave, valor]) => supabaseResponse.headers.set(clave, valor));
       },
     },
@@ -42,7 +44,11 @@ export async function updateSession(request: NextRequest) {
     const destino = request.nextUrl.clone();
     destino.pathname = "/";
     destino.search = "";
-    return NextResponse.redirect(destino);
+    const redireccion = NextResponse.redirect(destino);
+    // La redirección lleva las cookies que Supabase actualizó o borró (por ejemplo, una sesión vencida).
+    supabaseResponse.cookies.getAll().forEach((cookie) => redireccion.cookies.set(cookie));
+    Object.entries(encabezadosDeSesion).forEach(([clave, valor]) => redireccion.headers.set(clave, valor));
+    return redireccion;
   }
 
   return supabaseResponse;

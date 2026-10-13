@@ -15,7 +15,7 @@ La Fase 0 es **solo para uso interno** (el dueño del proyecto y el equipo). No 
 
 | Tema | Decisión | Motivo |
 |---|---|---|
-| Login | Solo **Google** en la Fase 0; teléfono en la Fase 1 | El login por teléfono necesita un servicio de SMS pago con verificación de cuenta; no hace falta hasta que haya feriantes reales |
+| Login | Solo **Google** en la Fase 0; **código por email** como alternativa en la Fase 1. **Sin login por teléfono ni SMS**. El WhatsApp se pide como dato de contacto para las entregas (Fase 1), sin verificar | Los SMS cuestan por mensaje y la plataforma debe ser asequible. Todo Android ya tiene cuenta de Google; el código por email cubre a quien no la usa, gratis dentro del cupo de un servicio de envío como Resend. Se descarta Facebook para no depender de una cuenta que puede ser cerrada |
 | Identidad visual | Estilo **B · Vivo y vibrante** | Elegido por el dueño entre tres propuestas |
 | Entornos | **Un solo proyecto de Supabase** (São Paulo, ya creado) para desarrollo y la versión publicada; el proyecto de producción se crea en la Fase 1, antes del piloto | Simple, gratis, sin instalar Docker; todos los cambios de base de datos quedan en migraciones repetibles |
 | Pantallas | Inicio simple + pantalla "Hola, [nombre]" | Alcanza para verificar que todo funciona; la página de presentación para feriantes se hace cerca del piloto |
@@ -98,7 +98,7 @@ Una ruta interna (`/diseno`) que muestra todas las piezas en modo claro y oscuro
 - La pantalla "Hola, [nombre]" está protegida: sin sesión, se redirige al inicio.
 - Errores (cancelación en Google, falla de red, enlace vencido): se vuelve al inicio con el mensaje "No pudimos hacerte entrar. Probá de nuevo." Nunca se muestran errores técnicos.
 - El navegador usa solo la clave pública de Supabase. `SUPABASE_SECRET_KEY` se usa únicamente en el servidor y en las pruebas.
-- El diseño deja lugar para sumar el login por teléfono en la Fase 1 sin cambiar el recorrido existente.
+- El diseño deja lugar para sumar el código por email en la Fase 1 sin cambiar el recorrido existente.
 
 ## 7. Base de datos
 
@@ -153,12 +153,13 @@ Ambas se construyen con pruebas primero (TDD).
 
 ## 11. Fuera de alcance de la Fase 0
 
-Tiendas, productos, sala en vivo, video, chat, Código en vivo, pagos, login por teléfono, página de presentación para feriantes, Sentry, PostHog, proyecto de Supabase de producción separado.
+Tiendas, productos, sala en vivo, video, chat, Código en vivo, pagos, código por email, dato de WhatsApp, página de presentación para feriantes, Sentry, PostHog, proyecto de Supabase de producción separado.
 
 ## 12. Pendientes que pasan a la Fase 1
 
 - Crear el proyecto de Supabase de **producción** y aplicarle las migraciones antes del piloto.
-- Sumar el **login por teléfono** (elegir y contratar el servicio de SMS).
+- Sumar el **código por email** como forma de entrar, con un servicio de envío de emails dentro de su cupo gratis (por ejemplo, Resend), porque el envío que trae Supabase de fábrica permite muy pocos emails por hora.
+- Pedir el **número de WhatsApp** como dato de contacto al ganar el primer código o al cargar los datos de entrega.
 - Configurar **Sentry y PostHog**.
 - Evaluar pasar Supabase al **plan pago** para que el proyecto no se pause durante el piloto.
 - Registrar el dominio **`tuferia.live`**.

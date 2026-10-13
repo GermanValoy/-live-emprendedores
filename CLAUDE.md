@@ -36,7 +36,7 @@ Plataforma de ventas en vivo para emprendedoras y feriantes de **Tucumán, Argen
 | UI | Tailwind CSS + shadcn/ui · PWA instalable |
 | Backend | Route Handlers / Server Actions de Next.js |
 | Base de datos | PostgreSQL en Supabase (región São Paulo) + Drizzle ORM |
-| Auth | Supabase Auth (Google + teléfono) |
+| Auth | Supabase Auth: Google (Fase 0) + código por email (Fase 1). Sin SMS: el WhatsApp se pide como dato de contacto para las entregas, sin verificar |
 | Tiempo real | Supabase Realtime (chat, códigos, pedidos) |
 | Video | Cloudflare Stream — Live Inputs con WebRTC (WHIP para transmitir, WHEP para ver). RTMP opcional para OBS/Larix. Se activa en la Fase 1 |
 | Archivos | Supabase Storage (fotos de productos, comprobantes en bucket privado) |

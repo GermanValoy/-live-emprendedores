@@ -126,11 +126,11 @@ Programar los pagos como un **módulo intercambiable** (`lib/payments/` con una 
 
 **Fase 0 – Bases**: proyecto Next.js + Supabase + Drizzle, sistema de diseño (colores, tipografía, componentes base), login, estructura de carpetas, CI con tests, deploy en Vercel.
 
-**Fase 1 – MVP para que las feriantes lo prueben (gratis)**: tienda y productos, sala en vivo con WebRTC (activar Cloudflare Stream), chat con moderación básica, Código en vivo con pago por prenda, **modo alias** con "Ya pagué" y confirmación de la vendedora. Piloto con 5–10 feriantes reales.
+**Fase 1 – MVP para que las feriantes lo prueben (gratis)**: portada **"En vivo ahora"** con puestos debajo, tienda y productos (tiendas por invitación durante el piloto), seguir puestos, sala en vivo con WebRTC (activar Cloudflare Stream; **sin grabación**, porque WebRTC no se graba y las repeticiones son de la Fase 2), chat con moderación básica, Código en vivo con pago por prenda, **modo alias** con "Ya pagué" y confirmación de la vendedora. Piloto con 5–10 feriantes reales. Se construye en partes; las pantallas están definidas en `docs/superpowers/specs/2026-10-14-fase-1-parte-0-pantallas-design.md`.
 
-**Fase 2 – Experiencia completa**: carrito del vivo, reputación y faltas, repeticiones con productos marcados, seguidores y notificaciones push, vivos programados, ayudantes, panel de ventas.
+**Fase 2 – Experiencia completa**: carrito del vivo, reputación y faltas, repeticiones con productos marcados (requiere grabar por RTMP u otra alternativa, con borrado automático), notificaciones push a seguidores, vivos programados, ayudantes, panel de ventas.
 
-**Fase 3 – Monetización y crecimiento**: suscripción mensual de las emprendedoras (monto según análisis de mercado), QR interoperable con confirmación automática, "En vivo ahora" y descubrimiento por categoría, publicidad, agentes de IA, apps nativas si hace falta.
+**Fase 3 – Monetización y crecimiento**: suscripción mensual de las emprendedoras (monto según análisis de mercado), QR interoperable con confirmación automática, descubrimiento por categoría, publicidad, agentes de IA, apps nativas si hace falta.
 
 ## 11. Ideas pendientes (se definen en el camino)
 

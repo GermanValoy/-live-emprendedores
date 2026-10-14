@@ -82,7 +82,7 @@ Flujo en la plataforma:
 4. Adjudicación **atómica en PostgreSQL** (función con transacción y bloqueo de fila): nunca dos ganadoras para la misma unidad.
 5. La ganadora recibe un aviso con los **datos de pago** (ver sección 7) y un plazo configurable.
 6. Si vence el plazo sin pago informado → pasa automáticamente a la siguiente de la lista de espera y se registra una falta.
-7. Pago confirmado → pedido "Pagado" → se piden datos de entrega (retiro en feria, punto de encuentro, envío).
+7. La forma de entrega se elige al ganar, antes de pagar, porque el envío puede sumar costo: retiro en el domicilio de la feriante (la mayoría vende desde su casa; la dirección exacta solo la ve quien ya pagó), envío (gratis, monto fijo o a coordinar) o punto de encuentro. Pago confirmado → pedido "Pagado" → se muestran los datos de la entrega y se pide el WhatsApp para coordinar.
 8. Al terminar el vivo, la vendedora recibe un resumen agrupado por compradora.
 
 Configuraciones de la vendedora: **pago por prenda** o **carrito del vivo**; plazo de pago; asignación manual; anular/liberar código; stock > 1 por código.

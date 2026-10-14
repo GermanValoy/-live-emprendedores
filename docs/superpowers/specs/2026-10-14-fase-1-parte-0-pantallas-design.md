@@ -60,7 +60,7 @@ Barra de navegación inferior:
 
 ```
 Inicio (En vivo ahora + Puestos)
- ├─ Tarjeta de vivo ─► Sala en vivo ─► escribe el código ─► ¡Ganaste! ─► Ya pagué ─► (comprobante) ─► Esperando confirmación ─► Pagado: entrega
+ ├─ Tarjeta de vivo ─► Sala en vivo ─► escribe el código ─► ¡Ganaste! (elige entrega) ─► Ya pagué ─► (comprobante) ─► Esperando confirmación ─► Pagado: datos de entrega
  ├─ Puesto ─► Tienda de la feriante (Seguir)
  └─ Mis compras ─► Ver datos para pagar (reabre el panel de pago)
 
@@ -92,10 +92,12 @@ Capturas de referencia en [`fase-1-pantallas/`](fase-1-pantallas/). Los emojis r
 
 ### 6.3 Ganar y pagar — [04-ganaste-y-pago.png](fase-1-pantallas/04-ganaste-y-pago.png)
 Panel que sube desde abajo, con el vivo visible atrás:
-1. **¡Ganaste el código X!**: foto y descripción del producto, puesto, alias con botón Copiar, titular, monto exacto, cuenta regresiva del plazo ("Si no, pasa a la siguiente") y botón **Ya pagué**. Único festejo animado de la app.
+1. **¡Ganaste el código X!**: foto y descripción del producto, puesto, **elección de la forma de entrega** entre las que ofrece la feriante (retiro en su domicilio, envío, punto de encuentro), total actualizado según la entrega ("Vestido $8.000 + envío $2.500 = $10.500"), alias con botón Copiar, titular, cuenta regresiva del plazo ("Si no, pasa a la siguiente") y botón **Ya pagué**. Único festejo animado de la app.
 2. **Comprobante (opcional)**: subir captura desde la galería, "Enviar comprobante" o "Seguir sin comprobante". Solo lo ven la compradora y la feriante.
 3. **Esperando confirmación**: "Le avisamos a Mica", estado "Pago informado", botón Seguir mirando.
-4. **Pago confirmado**: elegir forma de entrega entre las que ofrece la feriante (retiro en la feria, punto de encuentro, envío) y dejar el WhatsApp la primera vez.
+4. **Pago confirmado**: se muestran los datos de la entrega elegida (por ejemplo, la dirección exacta y horarios de retiro, visibles recién ahora) y se pide el WhatsApp la primera vez, para coordinar.
+
+> **Ajuste del 2026-10-14 (diseño de la Parte 1):** las feriantes venden desde su domicilio, no en una feria física, y el envío puede ser gratis, con monto fijo o "a coordinar". Por eso la entrega se elige en el paso 1, antes de transferir, y la dirección exacta del domicilio solo la ve quien ya pagó. La captura `04` es anterior a este ajuste (muestra la entrega en el paso 4 y "Retiro en la feria").
 
 ### 6.4 Estudio de la feriante — [05-estudio-feriante.png](fase-1-pantallas/05-estudio-feriante.png) (A + panel)
 - Cámara a pantalla completa, como la ven las compradoras.

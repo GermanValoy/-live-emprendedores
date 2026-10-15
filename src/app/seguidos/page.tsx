@@ -2,9 +2,11 @@ import { connection } from "next/server";
 import { Suspense } from "react";
 import { entrarConGoogle } from "@/app/auth/acciones";
 import { EstadoVacio } from "@/components/estado-vacio";
+import { TarjetaPuesto } from "@/components/tiendas/tarjeta-puesto";
 import { Button } from "@/components/ui/button";
 import { obtenerUsuarioId } from "@/lib/auth/sesion";
 import { createClient } from "@/lib/supabase/server";
+import { listarSeguidos } from "@/lib/tiendas/datos";
 
 async function ContenidoSeguidos() {
   await connection();
@@ -23,7 +25,15 @@ async function ContenidoSeguidos() {
       />
     );
   }
-  return <EstadoVacio texto="Todavía no seguís ningún puesto. Tocá Seguir en los que te gusten." />;
+  const puestos = await listarSeguidos(supabase, userId);
+  if (!puestos.length) return <EstadoVacio texto="Todavía no seguís ningún puesto. Tocá Seguir en los que te gusten." />;
+  return (
+    <div className="flex flex-col gap-3">
+      {puestos.map((p) => (
+        <TarjetaPuesto key={p.id} puesto={p} siguiendo conSesion />
+      ))}
+    </div>
+  );
 }
 
 export default function SeguidosPage() {

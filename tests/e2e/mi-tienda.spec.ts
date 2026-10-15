@@ -57,9 +57,11 @@ test("guarda el cobro y las entregas", async ({ page }) => {
 });
 
 test("sube la foto de perfil", async ({ page }) => {
+  test.setTimeout(90_000); // comprimir y subir dos tamaños es más lento en las máquinas de GitHub
   await page.goto("/mi-puesto/tienda");
   await page.getByLabel("Foto del puesto").setInputFiles("tests/e2e/fixtures/foto-de-costado.jpg");
-  await expect(page.getByText("Foto guardada")).toBeVisible({ timeout: 30_000 });
+  // Se espera el primer aviso que aparezca: si no es "Foto guardada", el error muestra cuál fue.
+  await expect(page.locator("[data-sonner-toast]").first()).toHaveText("Foto guardada", { timeout: 60_000 });
   await page.reload();
   await expect(page.getByRole("img", { name: "Foto del puesto" })).toHaveAttribute("src", /\/perfil\/.+-400\.(webp|jpg)$/);
 });

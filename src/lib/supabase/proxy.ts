@@ -2,7 +2,7 @@ import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import { supabaseEnv } from "./env";
 
-const RUTAS_PROTEGIDAS = ["/cuenta"];
+const RUTAS_PROTEGIDAS = ["/cuenta", "/mi-puesto"];
 
 function esProtegida(ruta: string) {
   return RUTAS_PROTEGIDAS.some((r) => ruta === r || ruta.startsWith(`${r}/`));

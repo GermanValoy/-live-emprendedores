@@ -10,11 +10,13 @@ import { guardarDatosTienda, guardarFotoTienda } from "@/app/mi-puesto/acciones"
 import { ErrorDeFoto } from "@/lib/fotos/comprimir";
 import { subirFoto } from "@/lib/fotos/subir";
 import { alServidor } from "@/lib/red";
+import { useMontado } from "@/lib/use-montado";
 import type { Tienda } from "@/lib/tiendas/tipos";
 import { CamposTienda } from "./campos-tienda";
 
 function SubirFotoTienda({ tienda, tipo }: { tienda: Tienda; tipo: "avatar" | "cover" }) {
   const router = useRouter();
+  const montado = useMontado();
   const [pendiente, iniciar] = useTransition();
   const etiqueta = tipo === "avatar" ? "Foto del puesto" : "Portada (opcional)";
   const actual = tipo === "avatar" ? tienda.avatar_path : tienda.cover_path;
@@ -28,7 +30,7 @@ function SubirFotoTienda({ tienda, tipo }: { tienda: Tienda; tipo: "avatar" | "c
       )}
       <label htmlFor={id} className="font-semibold">{etiqueta}</label>
       <input
-        id={id} type="file" accept="image/jpeg,image/png,image/webp" className="sr-only" disabled={pendiente}
+        id={id} type="file" accept="image/jpeg,image/png,image/webp" className="sr-only" disabled={!montado || pendiente}
         onChange={(e) => {
           const archivo = e.target.files?.[0];
           if (!archivo) return;
@@ -45,7 +47,7 @@ function SubirFotoTienda({ tienda, tipo }: { tienda: Tienda; tipo: "avatar" | "c
           });
         }}
       />
-      <Button variant="secondary" type="button" disabled={pendiente} onClick={() => document.getElementById(id)?.click()}>
+      <Button variant="secondary" type="button" disabled={!montado || pendiente} onClick={() => document.getElementById(id)?.click()}>
         {pendiente ? "Preparando foto…" : "Cambiar"}
       </Button>
     </div>

@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { borrarUsuarioPrueba, crearUsuarioPrueba, type UsuarioPrueba } from "../helpers/usuario-prueba";
 import { borrarFotosDeTienda, crearTiendaPrueba } from "../helpers/tiendas-prueba";
+import { elegirFoto } from "./fotos";
 import { cookiesDeSesion } from "./sesion";
 
 const FOTO = "tests/e2e/fixtures/foto-de-costado.jpg";
@@ -24,7 +25,7 @@ test.beforeEach(async ({ context }) => {
 test("carga un producto con foto: queda derecha, sin datos ocultos y en dos tamaños", async ({ page, request }) => {
   await page.goto("/mi-puesto/productos");
   await page.getByRole("link", { name: "＋ Producto" }).click();
-  await page.getByLabel("Fotos").setInputFiles(FOTO);
+  await elegirFoto(page, "Fotos", FOTO);
   await expect(page.getByRole("img", { name: "Foto 1" })).toBeVisible();
   await page.getByLabel("Nombre").fill("Vestido azul");
   await page.getByLabel("Precio").fill("8.000");

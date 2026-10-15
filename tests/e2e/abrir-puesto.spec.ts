@@ -1,6 +1,7 @@
 import { expect, type Page, test } from "@playwright/test";
 import { borrarUsuarioPrueba, clienteAdmin, crearUsuarioPrueba, type UsuarioPrueba } from "../helpers/usuario-prueba";
 import { borrarFotosDeTienda, crearInvitacionPrueba, handleAleatorio, hacerAdmin } from "../helpers/tiendas-prueba";
+import { elegirFoto } from "./fotos";
 import { cookiesDeSesion } from "./sesion";
 
 let admin: UsuarioPrueba;
@@ -53,7 +54,7 @@ test("recorrido completo: 4 pasos y la tienda queda lista y pública", async ({ 
   const handle = handleAleatorio("mica");
 
   await expect(page.getByText("Paso 1 de 4")).toBeVisible();
-  await page.getByLabel("Foto del puesto").setInputFiles("tests/e2e/fixtures/foto-de-costado.jpg");
+  await elegirFoto(page, "Foto del puesto", "tests/e2e/fixtures/foto-de-costado.jpg");
   await completarPaso1(page, handle);
 
   await expect(page.getByText("Paso 2 de 4")).toBeVisible({ timeout: 30_000 });

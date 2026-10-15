@@ -3,6 +3,7 @@
 import { ArrowLeft, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { urlFoto } from "@/lib/fotos/rutas";
+import { useMontado } from "@/lib/use-montado";
 
 export type ItemFoto = { tipo: "existente"; path: string } | { tipo: "nueva"; archivo: File; vista: string };
 
@@ -12,6 +13,7 @@ export function SelectorFotos({
   const [items, setItems] = useState<ItemFoto[]>(inicial.map((path) => ({ tipo: "existente", path })));
   const [aviso, setAviso] = useState<string | null>(null);
   const input = useRef<HTMLInputElement>(null);
+  const montado = useMontado();
 
   useEffect(() => alCambiar(items), [items, alCambiar]);
 
@@ -54,14 +56,14 @@ export function SelectorFotos({
           </div>
         ))}
         {items.length < maximo && (
-          <button type="button" aria-label="Agregar foto" onClick={() => input.current?.click()}
+          <button type="button" aria-label="Agregar foto" disabled={!montado} onClick={() => input.current?.click()}
             className="grid aspect-square min-h-11 place-items-center rounded-xl border-2 border-dashed text-2xl text-muted-foreground">
             ＋
           </button>
         )}
       </div>
       <input ref={input} id="fotos" type="file" accept="image/jpeg,image/png,image/webp" multiple={maximo > 1}
-        className="sr-only" onChange={(e) => agregar(e.target.files)} />
+        className="sr-only" disabled={!montado} onChange={(e) => agregar(e.target.files)} />
       {aviso && <p role="alert" className="text-sm font-semibold text-destructive">{aviso}</p>}
     </div>
   );

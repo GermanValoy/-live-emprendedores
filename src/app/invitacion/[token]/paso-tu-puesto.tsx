@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { guardarFotoTienda } from "@/app/mi-puesto/acciones";
 import { subirFoto } from "@/lib/fotos/subir";
 import { alServidor } from "@/lib/red";
+import { useMontado } from "@/lib/use-montado";
 import { abrirPuesto } from "./acciones";
 
 export function PasoTuPuesto({ token }: { token: string }) {
@@ -15,6 +16,7 @@ export function PasoTuPuesto({ token }: { token: string }) {
   const [foto, setFoto] = useState<File | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [pendiente, iniciar] = useTransition();
+  const montado = useMontado();
 
   return (
     <form
@@ -44,7 +46,7 @@ export function PasoTuPuesto({ token }: { token: string }) {
       <h1 className="text-2xl font-extrabold">Tu puesto</h1>
       <div className="flex flex-col gap-1">
         <label htmlFor="foto-avatar" className="font-semibold">Foto del puesto</label>
-        <input id="foto-avatar" type="file" accept="image/jpeg,image/png,image/webp" onChange={(e) => setFoto(e.target.files?.[0] ?? null)} />
+        <input id="foto-avatar" type="file" accept="image/jpeg,image/png,image/webp" disabled={!montado} onChange={(e) => setFoto(e.target.files?.[0] ?? null)} />
       </div>
       <CamposTienda />
       {error && <p role="alert" className="text-sm font-semibold text-destructive">{error}</p>}

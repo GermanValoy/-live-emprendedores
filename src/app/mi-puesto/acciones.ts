@@ -215,3 +215,10 @@ export async function guardarEntregas(entrada: EntregasEntrada, avanzarA?: numbe
   await avanzarPaso(supabase, tienda, avanzarA);
   return { ok: true };
 }
+
+export async function marcarPuestoListo(): Promise<Resultado> {
+  const sesion = await duenaActual();
+  if (!sesion) return { ok: false, error: NO_GUARDO };
+  await avanzarPaso(sesion.supabase, sesion.tienda, 5);
+  return { ok: true };
+}

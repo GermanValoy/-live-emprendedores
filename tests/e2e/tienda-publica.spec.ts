@@ -51,8 +51,9 @@ test("una tienda que no existe muestra su mensaje", async ({ page }) => {
 test("el Inicio lista los puestos completos y no los que están a medio armar", async ({ page }) => {
   await page.goto("/");
   await expect(page.getByRole("heading", { name: "Puestos" })).toBeVisible();
-  await expect(page.getByRole("link", { name: /La Ropería de Mica/ })).toBeVisible();
-  await expect(page.getByText("Puesto A Medias")).toHaveCount(0);
+  // Se busca por la dirección única: otra corrida de pruebas puede tener una tienda con el mismo nombre.
+  await expect(page.locator(`a[href="/@${tienda.handle}"]`).first()).toBeVisible();
+  await expect(page.locator(`a[href="/@${incompleta.handle}"]`)).toHaveCount(0);
 });
 
 test("seguir un puesto y verlo en Seguidos; dejar de seguir", async ({ page, context }) => {

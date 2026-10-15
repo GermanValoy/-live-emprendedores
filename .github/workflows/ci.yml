@@ -9,6 +9,12 @@ on:
 permissions:
   contents: read
 
+# Si llegan dos cambios seguidos a la misma rama o PR, se cancela la corrida vieja:
+# así no corren dos juegos de pruebas a la vez sobre la misma base de datos.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   verificar:
     runs-on: ubuntu-latest

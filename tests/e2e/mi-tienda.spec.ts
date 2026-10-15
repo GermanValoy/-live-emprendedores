@@ -58,10 +58,21 @@ test("guarda el cobro y las entregas", async ({ page }) => {
 
 test("sube la foto de perfil", async ({ page }) => {
   test.setTimeout(90_000); // comprimir y subir dos tamaños es más lento en las máquinas de GitHub
+  // Diagnóstico temporal: si falla, el resumen de GitHub muestra qué pasó en el navegador.
+  const registro: string[] = [];
+  page.on("console", (m) => registro.push(`${m.type()}: ${m.text()}`));
+  page.on("pageerror", (e) => registro.push(`pageerror: ${e.message}`));
+  page.on("requestfailed", (r) => registro.push(`requestfailed: ${r.method()} ${r.url()} ${r.failure()?.errorText}`));
+  page.on("response", (r) => {
+    if (r.status() >= 400) registro.push(`http ${r.status()}: ${r.request().method()} ${r.url()}`);
+  });
   await page.goto("/mi-puesto/tienda");
   await page.getByLabel("Foto del puesto").setInputFiles("tests/e2e/fixtures/foto-de-costado.jpg");
-  // Se espera el primer aviso que aparezca: si no es "Foto guardada", el error muestra cuál fue.
-  await expect(page.locator("[data-sonner-toast]").first()).toHaveText("Foto guardada", { timeout: 60_000 });
+  const aviso = page.locator("[data-sonner-toast]").first();
+  await aviso.waitFor({ timeout: 60_000 }).catch(() => undefined);
+  const pantalla = (await page.locator("main").innerText().catch(() => "")).replace(/\s+/g, " ").slice(0, 600);
+  expect(await aviso.count(), `Sin aviso. Pantalla: ${pantalla} | Registro: ${registro.join(" || ").slice(0, 1500)}`).toBeGreaterThan(0);
+  await expect(aviso).toHaveText("Foto guardada");
   await page.reload();
   await expect(page.getByRole("img", { name: "Foto del puesto" })).toHaveAttribute("src", /\/perfil\/.+-400\.(webp|jpg)$/);
 });

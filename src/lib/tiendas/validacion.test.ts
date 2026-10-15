@@ -49,10 +49,15 @@ describe("parsearPrecio", () => {
     expect(parsearPrecio("1.000.000")).toBe(100000000);
   });
 
-  it("entiende decimales cortos con coma o punto", () => {
+  it("entiende los centavos solo con coma", () => {
     expect(parsearPrecio("8,5")).toBe(850);
-    expect(parsearPrecio("8.5")).toBe(850);
-    expect(parsearPrecio("8.50")).toBe(850);
+    expect(parsearPrecio("8,50")).toBe(850);
+  });
+
+  it("no acepta un punto con 1 o 2 cifras: puede ser $8,50 o $8.500, hay que escribirlo completo", () => {
+    expect(parsearPrecio("8.5")).toBeNull();
+    expect(parsearPrecio("8.50")).toBeNull();
+    expect(parsearPrecio("12.5")).toBeNull();
   });
 
   it("rechaza vacíos, cero, negativos, letras y montos absurdos", () => {
@@ -85,7 +90,7 @@ describe("esquemas", () => {
     expect(ok.success).toBe(true);
     const sinPrecio = productoSchema.safeParse({ name: "Vestido", description: "", price_cents: 0, quantity: 1, visible: true });
     expect(sinPrecio.success).toBe(false);
-    if (!sinPrecio.success) expect(primerError(sinPrecio.error)).toBe("Escribí un precio válido.");
+    if (!sinPrecio.success) expect(primerError(sinPrecio.error)).toBe("Escribí el precio completo, por ejemplo 8.500 u 8,50.");
     const mucho = productoSchema.safeParse({ name: "Vestido", description: "", price_cents: 100, quantity: 1000, visible: true });
     expect(mucho.success).toBe(false);
   });

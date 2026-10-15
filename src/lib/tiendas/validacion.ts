@@ -26,8 +26,9 @@ export function errorDeHandle(handle: string): string | null {
 const PRECIO_MAXIMO = 100_000_000;
 
 /**
- * Convierte lo que escribe una persona en centavos: "8.000" → 800000, "8.500,50" → 850050,
- * "8,5" o "8.5" → 850. Devuelve null si no es un precio válido.
+ * Convierte lo que escribe una persona en centavos: "8.000" → 800000, "8.500,50" → 850050, "8,5" → 850.
+ * "8.5" no se acepta: en Argentina puede querer decir $8,50 o $8.500, así que se pide escribirlo completo.
+ * Devuelve null si no es un precio válido.
  */
 export function parsearPrecio(texto: string): number | null {
   const limpio = texto.replace(/\$/g, "").replace(/\s/g, "");
@@ -39,10 +40,6 @@ export function parsearPrecio(texto: string): number | null {
     decimales = parteDecimal;
   } else if (/^\d+(,\d{1,2})?$/.test(limpio)) {
     const [parteEntera, parteDecimal = ""] = limpio.split(",");
-    entero = parteEntera!;
-    decimales = parteDecimal;
-  } else if (/^\d+\.\d{1,2}$/.test(limpio)) {
-    const [parteEntera, parteDecimal = ""] = limpio.split(".");
     entero = parteEntera!;
     decimales = parteDecimal;
   } else {
@@ -80,7 +77,11 @@ export const datosCobroSchema = z.object({
 export const productoSchema = z.object({
   name: textoEntre(2, 60, "El nombre del producto tiene que tener entre 2 y 60 caracteres."),
   description: textoOpcional(200, "La descripción puede tener hasta 200 caracteres."),
-  price_cents: z.number().int().positive("Escribí un precio válido.").max(PRECIO_MAXIMO, "Escribí un precio válido."),
+  price_cents: z
+    .number()
+    .int()
+    .positive("Escribí el precio completo, por ejemplo 8.500 u 8,50.")
+    .max(PRECIO_MAXIMO, "El precio puede ser de hasta $1.000.000."),
   quantity: z.number().int().min(0, "La cantidad va de 0 a 999.").max(999, "La cantidad va de 0 a 999."),
   visible: z.boolean(),
 });

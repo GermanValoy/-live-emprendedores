@@ -63,14 +63,16 @@ test("un doble toque en Guardar crea un solo producto", async ({ page }) => {
   await expect(page.getByRole("listitem").filter({ hasText: "Bolso tejido" })).toHaveCount(1);
 });
 
-test("avisa si el precio no es válido", async ({ page }) => {
-  await page.goto("/mi-puesto/productos/nuevo");
-  await page.getByLabel("Nombre").fill("Remera");
-  await page.getByLabel("Precio").fill("gratis");
-  await page.getByLabel("Cantidad").fill("1");
-  await page.getByRole("button", { name: "Guardar producto" }).click();
-  await expect(page.getByRole("alert").filter({ hasText: "Escribí un precio válido." })).toBeVisible();
-});
+for (const precio of ["gratis", "8.5"]) {
+  test(`pide el precio completo si se escribe "${precio}"`, async ({ page }) => {
+    await page.goto("/mi-puesto/productos/nuevo");
+    await page.getByLabel("Nombre").fill("Remera");
+    await page.getByLabel("Precio").fill(precio);
+    await page.getByLabel("Cantidad").fill("1");
+    await page.getByRole("button", { name: "Guardar producto" }).click();
+    await expect(page.getByRole("alert").filter({ hasText: "Escribí el precio completo, por ejemplo 8.500 u 8,50." })).toBeVisible();
+  });
+}
 
 test("oculta, edita y borra un producto", async ({ page }) => {
   await page.goto("/mi-puesto/productos/nuevo");

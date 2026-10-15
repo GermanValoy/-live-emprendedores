@@ -18,8 +18,12 @@ export function CamposTienda({ inicial = {} }: { inicial?: Inicial }) {
   useEffect(() => {
     if (!normal || normal === inicial.handle) return;
     const t = setTimeout(async () => {
-      const r = await verificarHandle(normal);
-      setVerificado({ handle: normal, mensaje: r.mensaje });
+      try {
+        const r = await verificarHandle(normal);
+        setVerificado({ handle: normal, mensaje: r.mensaje });
+      } catch {
+        // Sin conexión no se puede verificar; el servidor vuelve a controlar al guardar.
+      }
     }, 400);
     return () => clearTimeout(t);
   }, [normal, inicial.handle]);

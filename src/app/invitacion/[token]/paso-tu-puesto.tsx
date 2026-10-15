@@ -7,6 +7,7 @@ import { CamposTienda } from "@/components/tiendas/campos-tienda";
 import { Button } from "@/components/ui/button";
 import { guardarFotoTienda } from "@/app/mi-puesto/acciones";
 import { subirFoto } from "@/lib/fotos/subir";
+import { alServidor } from "@/lib/red";
 import { abrirPuesto } from "./acciones";
 
 export function PasoTuPuesto({ token }: { token: string }) {
@@ -24,7 +25,9 @@ export function PasoTuPuesto({ token }: { token: string }) {
         const v = (k: string) => String(fd.get(k) ?? "");
         iniciar(async () => {
           setError(null);
-          const r = await abrirPuesto(token, { name: v("name"), handle: v("handle"), category: v("category"), zone: v("zone") });
+          const r = await alServidor(() =>
+            abrirPuesto(token, { name: v("name"), handle: v("handle"), category: v("category"), zone: v("zone") }),
+          );
           if (!r.ok) return setError(r.error);
           if (foto) {
             try {

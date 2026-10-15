@@ -7,6 +7,8 @@ import { FormularioEntregas } from "@/components/tiendas/formulario-entregas";
 import { FormularioProducto } from "@/components/tiendas/formulario-producto";
 import { Button } from "@/components/ui/button";
 import { marcarPuestoListo } from "@/app/mi-puesto/acciones";
+import { toast } from "sonner";
+import { alServidor } from "@/lib/red";
 import type { DatosPrivados, OpcionEntrega, Tienda } from "@/lib/tiendas/tipos";
 
 type Props = { tienda: Tienda; privados: DatosPrivados | null; opciones: OpcionEntrega[] };
@@ -48,8 +50,9 @@ export function Pasos({ tienda, privados, opciones }: Props) {
             disabled={pendiente}
             onClick={() =>
               iniciar(async () => {
-                const r = await marcarPuestoListo();
+                const r = await alServidor(() => marcarPuestoListo());
                 if (r.ok) terminar();
+                else toast.error(r.error);
               })
             }
           >

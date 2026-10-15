@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { guardarEntregas } from "@/app/mi-puesto/acciones";
 import { formatARS } from "@/lib/format/plata";
+import { alServidor } from "@/lib/red";
 import type { DatosPrivados, EntregasEntrada, ModoEnvio, OpcionEntrega } from "@/lib/tiendas/tipos";
 
 type Props = {
@@ -41,7 +42,7 @@ export function FormularioEntregas({ zona, opciones, privados, avanzarA, textoBo
         e.preventDefault();
         iniciar(async () => {
           setError(null);
-          const r = await guardarEntregas(entrada, avanzarA);
+          const r = await alServidor(() => guardarEntregas(entrada, avanzarA));
           if (!r.ok) return setError(r.error);
           alGuardar();
         });

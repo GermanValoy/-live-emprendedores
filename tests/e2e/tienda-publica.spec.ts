@@ -36,7 +36,8 @@ test("la tienda pública muestra datos, entregas y productos, sin datos privados
   await expect(page.getByText("prueba.alias")).toHaveCount(0);
   await expect(page.getByText("Calle Falsa 123")).toHaveCount(0);
   await page.getByRole("link", { name: /Vestido de prueba/ }).click();
-  await expect(page).toHaveURL(new RegExp(`/@${tienda.handle.replace(".", "\\.")}/p/`));
+  // En modo desarrollo la primera visita compila la página del producto: se le da margen.
+  await expect(page).toHaveURL(new RegExp(`/@${tienda.handle.replace(".", "\\.")}/p/`), { timeout: 30_000 });
   // Next 16 conserva escondida la página anterior para volver rápido: se cuenta solo lo visible.
   await expect(page.getByText("$8.000").filter({ visible: true })).toBeVisible();
 });

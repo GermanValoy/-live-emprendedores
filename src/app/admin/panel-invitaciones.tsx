@@ -5,6 +5,7 @@ import { useState, useTransition } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { alServidor } from "@/lib/red";
 import { anularInvitacion, crearInvitacion } from "./acciones";
 
 export type FilaInvitacion = {
@@ -25,7 +26,7 @@ export function PanelInvitaciones({ filas }: { filas: FilaInvitacion[] }) {
   const crear = () =>
     iniciar(async () => {
       setError(null);
-      const r = await crearInvitacion(nota);
+      const r = await alServidor(() => crearInvitacion(nota));
       if (!r.ok) return setError(r.error);
       setLink(`${window.location.origin}/invitacion/${r.token}`);
       setNota("");
@@ -72,7 +73,7 @@ export function PanelInvitaciones({ filas }: { filas: FilaInvitacion[] }) {
                   disabled={pendiente}
                   onClick={() =>
                     iniciar(async () => {
-                      const r = await anularInvitacion(f.id);
+                      const r = await alServidor(() => anularInvitacion(f.id));
                       if (!r.ok) toast.error(r.error);
                       router.refresh();
                     })

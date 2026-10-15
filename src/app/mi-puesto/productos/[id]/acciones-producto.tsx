@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { FormularioProducto } from "@/components/tiendas/formulario-producto";
 import { Button } from "@/components/ui/button";
 import { borrarProducto, cambiarVisibilidad } from "@/app/mi-puesto/acciones";
+import { alServidor } from "@/lib/red";
 import type { Producto } from "@/lib/tiendas/tipos";
 
 export function AccionesProducto({ storeId, producto }: { storeId: string; producto: Producto }) {
@@ -26,7 +27,7 @@ export function AccionesProducto({ storeId, producto }: { storeId: string; produ
         disabled={pendiente}
         onClick={() =>
           iniciar(async () => {
-            const r = await cambiarVisibilidad(producto.id, !visible);
+            const r = await alServidor(() => cambiarVisibilidad(producto.id, !visible));
             if (r.ok) setVisible(!visible);
             else toast.error(r.error);
           })
@@ -44,7 +45,7 @@ export function AccionesProducto({ storeId, producto }: { storeId: string; produ
             disabled={pendiente}
             onClick={() =>
               iniciar(async () => {
-                const r = await borrarProducto(producto.id);
+                const r = await alServidor(() => borrarProducto(producto.id));
                 if (r.ok) volver();
                 else toast.error(r.error);
               })

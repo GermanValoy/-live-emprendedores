@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { guardarDatosTienda, guardarFotoTienda } from "@/app/mi-puesto/acciones";
 import { ErrorDeFoto } from "@/lib/fotos/comprimir";
 import { subirFoto } from "@/lib/fotos/subir";
+import { alServidor } from "@/lib/red";
 import type { Tienda } from "@/lib/tiendas/tipos";
 import { CamposTienda } from "./campos-tienda";
 
@@ -67,10 +68,12 @@ export function FormularioDatosTienda({ tienda }: { tienda: Tienda }) {
           const valor = (k: string) => String(fd.get(k) ?? "");
           iniciar(async () => {
             setError(null);
-            const r = await guardarDatosTienda({
-              name: valor("name"), handle: valor("handle"), category: valor("category"), zone: valor("zone"),
-              description: valor("description"), live_schedule_note: valor("live_schedule_note"),
-            });
+            const r = await alServidor(() =>
+              guardarDatosTienda({
+                name: valor("name"), handle: valor("handle"), category: valor("category"), zone: valor("zone"),
+                description: valor("description"), live_schedule_note: valor("live_schedule_note"),
+              }),
+            );
             if (!r.ok) return setError(r.error);
             toast.success("Datos guardados");
             router.refresh();

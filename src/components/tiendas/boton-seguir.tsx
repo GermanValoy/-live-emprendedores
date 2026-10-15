@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { entrarConGoogle } from "@/app/auth/acciones";
 import { alternarSeguir } from "@/app/tienda/acciones";
 import { Button } from "@/components/ui/button";
+import { alServidor } from "@/lib/red";
 
 type Props = { storeId: string; handle: string; siguiendo: boolean; conSesion: boolean };
 
@@ -29,7 +30,7 @@ export function BotonSeguir({ storeId, handle, siguiendo, conSesion }: Props) {
       onClick={() =>
         iniciar(async () => {
           setEstado(!estado);
-          const r = await alternarSeguir(storeId, !estado);
+          const r = await alServidor(() => alternarSeguir(storeId, !estado));
           if (!r.ok) toast.error(r.error);
           router.refresh();
         })

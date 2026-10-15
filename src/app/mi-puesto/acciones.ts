@@ -54,25 +54,35 @@ function validarProducto(datos: DatosProductoEntrada) {
   });
 }
 
-export async function crearProducto(datos: DatosProductoEntrada, fotos: string[], avanzarA?: number): Promise<Resultado> {
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
+
+/**
+ * Crea el producto con el id que generó el formulario. Si la respuesta se perdió y la feriante
+ * reintenta, el mismo id ya existe: se completa lo que falte en lugar de crear un duplicado.
+ */
+export async function crearProducto(id: string, datos: DatosProductoEntrada, fotos: string[], avanzarA?: number): Promise<Resultado> {
   const sesion = await duenaActual();
   if (!sesion) return { ok: false, error: NO_GUARDO };
   const { supabase, tienda } = sesion;
+  if (!UUID.test(id)) return { ok: false, error: NO_GUARDO };
   const r = validarProducto(datos);
   if (!r.success) return { ok: false, error: primerError(r.error) };
   if (fotos.length > 4) return { ok: false, error: "Podés subir hasta 4 fotos por producto." };
   if (!fotos.every((p) => rutaEsDeTienda(p, tienda.id, "productos"))) return { ok: false, error: NO_GUARDO };
 
-  const { data: producto, error } = await supabase
+  const { error } = await supabase
     .from("products")
-    .insert({ store_id: tienda.id, ...r.data, description: r.data.description || null })
-    .select("id")
-    .single();
-  if (error || !producto) return { ok: false, error: NO_GUARDO };
+    .insert({ id, store_id: tienda.id, ...r.data, description: r.data.description || null });
+  if (error) {
+    if (error.code !== "23505") return { ok: false, error: NO_GUARDO };
+    // Reintento: el producto ya se había creado. Solo sigue si es de esta tienda.
+    const { data: existente } = await supabase.from("products").select("id").eq("id", id).eq("store_id", tienda.id).maybeSingle();
+    if (!existente) return { ok: false, error: NO_GUARDO };
+  }
   if (fotos.length) {
     const { error: errorFotos } = await supabase
       .from("product_photos")
-      .insert(fotos.map((path, position) => ({ product_id: producto.id, path, position })));
+      .upsert(fotos.map((path, position) => ({ product_id: id, path, position })), { onConflict: "product_id,position" });
     if (errorFotos) return { ok: false, error: NO_GUARDO };
   }
   await avanzarPaso(supabase, tienda, avanzarA);

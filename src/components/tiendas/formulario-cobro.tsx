@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { guardarCobro } from "@/app/mi-puesto/acciones";
+import { alServidor } from "@/lib/red";
 
 type Props = {
   inicial?: { payment_alias: string | null; payment_holder: string | null };
@@ -23,9 +24,11 @@ export function FormularioCobro({ inicial, avanzarA, textoBoton, alGuardar }: Pr
         const fd = new FormData(e.currentTarget);
         iniciar(async () => {
           setError(null);
-          const r = await guardarCobro(
-            { payment_alias: String(fd.get("payment_alias") ?? ""), payment_holder: String(fd.get("payment_holder") ?? "") },
-            avanzarA,
+          const r = await alServidor(() =>
+            guardarCobro(
+              { payment_alias: String(fd.get("payment_alias") ?? ""), payment_holder: String(fd.get("payment_holder") ?? "") },
+              avanzarA,
+            ),
           );
           if (!r.ok) return setError(r.error);
           alGuardar();

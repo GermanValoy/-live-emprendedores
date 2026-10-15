@@ -24,6 +24,10 @@ export function FormularioProducto({ storeId, producto, avanzarA, textoBoton, al
   const [estado, setEstado] = useState<string | null>(null);
   const [pendiente, iniciar] = useTransition();
   const enviando = useRef(false);
+  // Un id por formulario: si la respuesta se pierde y se reintenta, el servidor no crea un duplicado.
+  const [idNuevo] = useState(() => crypto.randomUUID());
+  // Fotos ya subidas en un intento anterior: no se vuelven a subir al reintentar.
+  const subidas = useRef(new Map<File, string>());
   const alCambiarFotos = useCallback((items: ItemFoto[]) => setFotos(items), []);
 
   const enviar = (formulario: HTMLFormElement) => {
@@ -44,12 +48,19 @@ export function FormularioProducto({ storeId, producto, avanzarA, textoBoton, al
         for (const [i, item] of fotos.entries()) {
           if (item.tipo === "existente") paths.push(item.path);
           else {
-            setEstado(`Preparando foto ${i + 1}…`);
-            paths.push(await subirFoto(storeId, "productos", item.archivo));
+            let path = subidas.current.get(item.archivo);
+            if (!path) {
+              setEstado(`Preparando foto ${i + 1}…`);
+              path = await subirFoto(storeId, "productos", item.archivo);
+              subidas.current.set(item.archivo, path);
+            }
+            paths.push(path);
           }
         }
         setEstado(null);
-        const r = producto ? await actualizarProducto(producto.id, datos, paths) : await crearProducto(datos, paths, avanzarA);
+        const r = producto
+          ? await actualizarProducto(producto.id, datos, paths)
+          : await crearProducto(idNuevo, datos, paths, avanzarA);
         if (!r.ok) {
           setError(r.error);
           enviando.current = false;

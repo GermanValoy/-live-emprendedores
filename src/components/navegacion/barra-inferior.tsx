@@ -4,8 +4,8 @@ import { Heart, Home, ShoppingBag, Store, User } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
-export function BarraInferior({ esFeriante }: { esFeriante: boolean }) {
-  const ruta = usePathname();
+/** Barra sin pestaña activa: se usa mientras carga la sesión (no lee la dirección actual). */
+export function BarraInferiorBase({ esFeriante, ruta }: { esFeriante: boolean; ruta: string | null }) {
   const items = [
     { href: "/", texto: "Inicio", Icono: Home },
     esFeriante
@@ -21,7 +21,7 @@ export function BarraInferior({ esFeriante }: { esFeriante: boolean }) {
     >
       <ul className="mx-auto grid max-w-md grid-cols-4">
         {items.map(({ href, texto, Icono }) => {
-          const activo = href === "/" ? ruta === "/" : ruta.startsWith(href);
+          const activo = ruta !== null && (href === "/" ? ruta === "/" : ruta.startsWith(href));
           return (
             <li key={href}>
               <Link
@@ -40,4 +40,9 @@ export function BarraInferior({ esFeriante }: { esFeriante: boolean }) {
       </ul>
     </nav>
   );
+}
+
+/** Barra con la pestaña activa marcada según la dirección actual. Va dentro de <Suspense>. */
+export function BarraInferior({ esFeriante }: { esFeriante: boolean }) {
+  return <BarraInferiorBase esFeriante={esFeriante} ruta={usePathname()} />;
 }

@@ -2,7 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Bricolage_Grotesque } from "next/font/google";
 import { Suspense } from "react";
 import { AvisoSinConexion } from "@/components/aviso-sin-conexion";
-import { BarraInferior } from "@/components/navegacion/barra-inferior";
+import { BarraInferiorBase } from "@/components/navegacion/barra-inferior";
 import { BarraSegunSesion } from "@/components/navegacion/barra-segun-sesion";
 import { Toaster } from "@/components/ui/sonner";
 import "./globals.css";
@@ -31,7 +31,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       <body>
         <AvisoSinConexion />
         <div className="pb-20">{children}</div>
-        <Suspense fallback={<BarraInferior esFeriante={false} />}>
+        <Suspense fallback={<BarraInferiorBase esFeriante={false} ruta={null} />}>
           <BarraSegunSesion />
         </Suspense>
         <Toaster position="top-center" />

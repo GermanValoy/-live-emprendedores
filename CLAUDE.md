@@ -147,3 +147,48 @@ Programar los pagos como un **módulo intercambiable** (`lib/payments/` con una 
 - **Playwright** para probar los flujos críticos: entrar a la sala, reclamar código, informar pago.
 - Commits pequeños y descriptivos en español.
 - Avanzar de a un paso y mostrar qué cambió antes de seguir.
+
+## 13. Mapa del proyecto
+
+Next.js es "todo en uno": cada pantalla y las acciones del servidor que usa viven juntas. No hay carpetas "Frontend" y "Backend" separadas a propósito (decisión del 2026-10-15): separarlas obligaría a mantener dos aplicaciones sin beneficio para las usuarias.
+
+### Carpetas
+
+| Carpeta | Qué hay | Rol |
+|---|---|---|
+| `src/app/` | Una carpeta por dirección de la app. Adentro: `page.tsx` (la pantalla) y, si guarda datos, `acciones.ts` (Server Actions: el "backend" de esa pantalla) | Pantallas + servidor |
+| `src/components/` | Piezas visuales reutilizables, agrupadas por tema: `ui/` (shadcn), `marca/`, `navegacion/`, `fotos/`, `tiendas/` | Interfaz |
+| `src/lib/` | Lógica sin pantalla, por tema: `tiendas/` (validaciones, entregas, lecturas de datos, tipos), `fotos/` (compresión, subida, rutas), `format/` (plata y fechas), `auth/`, `supabase/` (conexiones), `red.ts` (errores de conexión) | Reglas del negocio |
+| `src/db/schema.ts` | Descripción de las tablas (Drizzle) | Base de datos |
+| `drizzle/` | Migraciones numeradas: las `seguridad_*.sql` tienen los permisos (RLS), funciones y reglas de Storage | Base de datos |
+| `src/proxy.ts` | Corre antes de cada página: renueva la sesión y protege `/cuenta` y `/mi-puesto` | Seguridad |
+| `tests/` | `e2e/` (Playwright, como una persona usando la app), `integracion/` (reglas de la base contra Supabase), `helpers/` (usuarios y tiendas de prueba). Las pruebas unitarias van junto al archivo que prueban (`*.test.ts`) | Calidad |
+| `docs/superpowers/` | `specs/` (documentos de diseño) y `plans/` (planes de implementación) | Documentación |
+| `assets/`, `scripts/`, `public/icons/` | Ícono de la app en SVG, el script que genera los PNG y los PNG generados | Marca |
+| `.claude/skills/` | Skills del proyecto (diseño, animaciones, UI/UX) | Herramientas |
+
+### Direcciones de la app → archivos
+
+| Dirección | Archivo | Quién la ve |
+|---|---|---|
+| `/` | `src/app/page.tsx` | Todos (Inicio con Puestos) |
+| `/@usuario` y `/@usuario/p/[id]` | `src/app/tienda/[handle]/…` (reescritura en `next.config.ts`, porque en Next las carpetas con `@` son otra cosa) | Todos |
+| `/seguidos`, `/mis-compras` | `src/app/seguidos/`, `src/app/mis-compras/` | Compradoras |
+| `/mi-puesto` y debajo (`armar`, `tienda`, `productos`) | `src/app/mi-puesto/…` | Feriantes |
+| `/invitacion/[token]` | `src/app/invitacion/[token]/` | Quien recibe una invitación |
+| `/admin` | `src/app/admin/` | Solo administradores (los demás ven "no encontrada") |
+| `/cuenta` | `src/app/cuenta/` | Con sesión |
+| `/auth/callback` | `src/app/auth/callback/route.ts` | Vuelta del login de Google |
+| `/diseno` | `src/app/diseno/` | Muestra interna del sistema de diseño |
+
+### Dónde cambiar cada cosa
+
+- **Un texto de una pantalla**: en el `page.tsx` o en el componente de `src/components/` que la dibuja.
+- **Un mensaje de error de un formulario**: en `src/lib/tiendas/validacion.ts` (formatos) o en el `acciones.ts` de esa pantalla.
+- **Colores, letra, animaciones**: `src/app/globals.css` (ver la sección 4 del diseño de la Fase 0).
+- **Quién puede ver o editar un dato**: en la migración `seguridad_*.sql` correspondiente, con una migración nueva (nunca editando una ya aplicada).
+- **Una tabla o columna**: `src/db/schema.ts` + `npm run db:generate` + migración de seguridad + `npm run db:migrate`.
+
+### Dónde va el código nuevo
+
+Cada función nueva del producto (por ejemplo, los vivos de la Parte 2) sigue el mismo patrón: pantallas en `src/app/<dirección>/`, sus acciones en un `acciones.ts` al lado, lógica en `src/lib/<tema>/`, componentes en `src/components/<tema>/`, tablas en `src/db/schema.ts` + `drizzle/`, y pruebas en `tests/` o junto al archivo.

@@ -38,10 +38,10 @@ Plataforma de ventas en vivo para emprendedoras y feriantes de **Tucumán, Argen
 | Base de datos | PostgreSQL en Supabase (región São Paulo) + Drizzle ORM |
 | Auth | Supabase Auth: Google (Fase 0) + código por email (Fase 1). Sin SMS: el WhatsApp se pide como dato de contacto para las entregas, sin verificar |
 | Tiempo real | Supabase Realtime (chat, códigos, pedidos) |
-| Video | Cloudflare Stream — Live Inputs con WebRTC (WHIP para transmitir, WHEP para ver). RTMP opcional para OBS/Larix. Se activa en la Fase 1 |
-| Archivos | Supabase Storage (fotos de productos, comprobantes en bucket privado) |
+| Video | Cloudflare Stream — Live Inputs con WebRTC (WHIP para transmitir, WHEP para ver). RTMP opcional para OBS/Larix. Activado en la Fase 1 con el plan **Images & Stream de 0 USD/mes** (se paga 1 USD cada 1.000 minutos mirados; sin almacenamiento contratado). WebRTC es oficial desde el 2026-10-15, pero **no graba, no genera miniaturas ni informa cuánta gente mira** (eso lo resuelve la app). La URL para transmitir (WHIP) es una credencial: solo la ve la dueña del puesto |
+| Archivos | Supabase Storage: bucket público `tienda-fotos` (fotos comprimidas en el celular a 400 y 1200 px, sin datos EXIF, carpeta por tienda). Comprobantes de pago en bucket privado (Fase 1, Parte 4) |
 | Tests | Vitest (unitarios) + Playwright (end-to-end) |
-| Observabilidad | Sentry (errores) + PostHog (métricas) |
+| Observabilidad | Sentry (errores) + PostHog (métricas) — se configuran antes del piloto (Fase 1, Parte 5) |
 | Deploy | Vercel |
 
 Antes de usar cualquier API de estas librerías, **consultar documentación actualizada con Context7**. No asumir firmas de funciones de memoria.
@@ -62,9 +62,10 @@ Mantener un `.env.example` con los nombres y sin valores.
 ## 5. Glosario del dominio
 
 - **Emprendedora / vendedora**: dueña de una tienda; transmite en vivo.
-- **Tienda (store)**: perfil público de la emprendedora con catálogo y sus datos de cobro (alias).
+- **Tienda (store) / puesto**: perfil público de la emprendedora en `/@usuario`, con catálogo y formas de entrega. Sus datos de cobro (alias, titular) y su dirección son **privados**: solo los ve ella (y, desde la Parte 4, quien le compra).
+- **Invitación**: link de un solo uso, que vence a los 7 días, con el que una feriante abre su puesto durante el piloto. Lo crea un administrador en `/admin`.
 - **Sala**: la página del vivo de una tienda (video + chat + producto/código activo).
-- **Vivo (live_session)**: una transmisión concreta, con inicio, fin y grabación.
+- **Vivo (live_session)**: una transmisión concreta, con inicio y fin. En la Fase 1 no se graba (las repeticiones son de la Fase 2).
 - **Ayudante / moderador**: persona autorizada por la emprendedora para cargar códigos y moderar el chat.
 - **Código en vivo (live_code)**: palabra clave que dice la vendedora ("ROJO") asociada a un producto, precio, foto y stock.
 - **Reclamo (claim)**: cuando una compradora escribe un código válido en el chat. La primera (hora del servidor) gana; el resto queda en lista de espera.
@@ -107,7 +108,11 @@ Programar los pagos como un **módulo intercambiable** (`lib/payments/` con una 
 
 ## 8. Modelo de datos inicial
 
-`users`, `stores` (incluye alias y titular de cobro), `store_members` (ayudantes), `products`, `live_sessions`, `live_codes`, `claims`, `chat_messages`, `orders`, `order_items`, `payment_reports` (pago informado por la compradora + comprobante + confirmación de la vendedora), `follows`, `buyer_reputation`, `moderation_actions` (sala), `reports` (plataforma).
+**Ya creadas** (migraciones en `drizzle/`):
+- Fase 0: `users` (perfil público; se crea solo al registrarse).
+- Fase 1, Parte 1: `platform_admins` (administradores de la plataforma; el primero se carga a mano por SQL, sin escribir el email en el código), `invitations`, `stores` (con `handle` = @usuario y `onboarding_step` del recorrido de 4 pasos), `store_private_info` (alias, titular, dirección y horarios de retiro: **solo la dueña**), `store_delivery_options` (retiro en domicilio, envío gratis/fijo/a coordinar, punto de encuentro), `products`, `product_photos` (hasta 4 por producto), `follows`.
+
+**Planeadas**: `live_sessions` (Parte 2), `chat_messages` y `moderation_actions` (Parte 3), `live_codes`, `claims`, `orders`, `order_items`, `payment_reports` (Parte 4), `store_members` (ayudantes, Fase 2), `buyer_reputation` (Fase 2), `reports` (plataforma).
 
 - Row Level Security activado en **todas** las tablas (RLS automático habilitado en Supabase; las tablas nuevas NO se exponen automáticamente a la Data API: dar permisos explícitos en cada migración).
 - Montos en **centavos enteros (ARS)**, nunca en float.
@@ -121,18 +126,36 @@ Programar los pagos como un **módulo intercambiable** (`lib/payments/` con una 
 - Rate limiting en chat y reclamos de códigos.
 - Para reclamar un código hay que tener sesión iniciada; mirar y comentar puede ser libre.
 - Validar en el servidor todo lo que llega del cliente.
+- **Datos privados de las feriantes** (alias, titular, dirección exacta) en tablas separadas que solo lee la dueña; la base de datos lo hace cumplir (RLS), no solo la pantalla.
+- **Fotos**: se suben sin datos EXIF (sin ubicación GPS); cada tienda solo escribe en su carpeta de Storage.
+- **@usuario reservados** (`admin`, `soporte`, `tuferialive` y otros) para que nadie se haga pasar por la plataforma.
+- **Credenciales**: nunca se piden ni se pegan en el chat; el dueño las carga en `.env.local` y se verifican sin mostrarlas. Las contraseñas de la base deben ser solo letras y números.
 
 ## 10. Plan por fases
 
+**Estado (2026-10-16)**: Fase 0 publicada · Fase 1: Parte 0 (pantallas) y Parte 1 (tiendas y productos) publicadas en `tuferialive.vercel.app` · **en curso: Parte 2 (sala en vivo)**, empezando por una prueba de factibilidad de transmisión desde el navegador en iPhone y Android (hay feriantes con los dos).
+
 **Fase 0 – Bases**: proyecto Next.js + Supabase + Drizzle, sistema de diseño (colores, tipografía, componentes base), login, estructura de carpetas, CI con tests, deploy en Vercel.
 
-**Fase 1 – MVP para que las feriantes lo prueben (gratis)**: portada **"En vivo ahora"** con puestos debajo, tienda y productos (tiendas por invitación durante el piloto), seguir puestos, sala en vivo con WebRTC (activar Cloudflare Stream; **sin grabación**, porque WebRTC no se graba y las repeticiones son de la Fase 2), chat con moderación básica, Código en vivo con pago por prenda, **modo alias** con "Ya pagué" y confirmación de la vendedora. Piloto con 5–10 feriantes reales. Se construye en partes; las pantallas están definidas en `docs/superpowers/specs/2026-10-14-fase-1-parte-0-pantallas-design.md`.
+**Fase 1 – MVP para que las feriantes lo prueben (gratis)**: portada **"En vivo ahora"** con puestos debajo, tienda y productos (tiendas por invitación durante el piloto), seguir puestos, sala en vivo con WebRTC (activar Cloudflare Stream; **sin grabación**, porque WebRTC no se graba y las repeticiones son de la Fase 2), chat con moderación básica, Código en vivo con pago por prenda, **modo alias** con "Ya pagué" y confirmación de la vendedora. Piloto con 5–10 feriantes reales. Se construye en 6 partes (0 pantallas · 1 tiendas y productos · 2 sala en vivo · 3 chat · 4 código en vivo y pagos · 5 preparación del piloto); las pantallas están en `docs/superpowers/specs/2026-10-14-fase-1-parte-0-pantallas-design.md` y cada parte tiene su diseño y su plan en `docs/superpowers/`.
 
 **Fase 2 – Experiencia completa**: carrito del vivo, reputación y faltas, repeticiones con productos marcados (requiere grabar por RTMP u otra alternativa, con borrado automático), notificaciones push a seguidores, vivos programados, ayudantes, panel de ventas.
 
 **Fase 3 – Monetización y crecimiento**: suscripción mensual de las emprendedoras (monto según análisis de mercado), QR interoperable con confirmación automática, descubrimiento por categoría, publicidad, agentes de IA, apps nativas si hace falta.
 
 ## 11. Ideas pendientes (se definen en el camino)
+
+### Pendientes conocidos (detalles menores anotados en las revisiones)
+
+- La dueña ve el botón "Seguir" en su propia tienda (ocultarlo).
+- En escritorio todo se ve en una columna angosta (pensado primero para celular).
+- Editar un producto no es "todo o nada": si falla a mitad de camino puede perder sus fotos.
+- Fotos sueltas en Storage cuando se abandona un formulario: hace falta una limpieza periódica.
+- La consulta del Inicio trae más datos de los necesarios (optimizar cuando haya muchas tiendas).
+- La base no controla el formato de las rutas de fotos ni impide saltar pasos del recorrido manipulando el navegador.
+- Si se pierde la respuesta al abrir el puesto, el reintento dice "Esta invitación ya se usó." aunque la tienda se creó.
+- Vista previa con foto al compartir el link de una tienda por WhatsApp.
+- Antes del piloto: proyecto de Supabase separado para producción y plan pago (para que no se pause).
 
 - Agentes de IA como moderadores del chat y asistentes de la vendedora.
 - Más seguridad para emprendedoras y compradoras (verificación de identidad de la vendedora, reputación pública, denuncias).

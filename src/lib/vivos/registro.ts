@@ -12,12 +12,8 @@ export type Corte = { inicio: number; duracionMs: number; como: "sola" | "manual
 export type Resumen = { duracionMs: number; cortes: Corte[]; atrasoPromedioMs: number | null; atrasoMaxMs: number | null };
 
 function hayCorteAbierto(eventos: EventoRegistro[]): boolean {
-  for (let i = eventos.length - 1; i >= 0; i--) {
-    const t = eventos[i].tipo;
-    if (t === "corte") return true;
-    if (t === "vuelta") return false;
-  }
-  return false;
+  const ultimo = eventos.findLast((e) => e.tipo === "corte" || e.tipo === "vuelta");
+  return ultimo?.tipo === "corte";
 }
 
 /** Agrega el evento ignorando un corte si ya hay uno abierto, o una vuelta si no lo hay

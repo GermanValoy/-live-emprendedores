@@ -90,37 +90,40 @@ function Sesion({ modo, url, onSalir }: { modo: Modo; url: string; onSalir(): vo
 
     let activo = true;
     let conexion: ConexionVivo | null = null;
+    // Cada intento de conexión tiene un número; un intento viejo que termina tarde se cierra.
+    let generacion = 0;
+    let reconexionPendiente = false;
     let camara: MediaStream | null = null;
+    let conSonido = false;
+    let camaraCaida = false;
     let frente: "user" | "environment" = "user";
     let intento = 0;
     let proximaVueltaManual = false;
     let ultimosCuadros: number | null = null;
     let segundosCongelado = 0;
     let segundos = 0;
-    let quitarEscuchasPista = () => {};
+    let escuchas = new AbortController();
 
     const cambiarEstado = (e: Estado) => { if (activo) setEstado(e); };
+    const conectada = () => conexion?.pc.connectionState === "connected";
     const volvio = () => {
       anotar({ tipo: "vuelta", en: Date.now(), como: proximaVueltaManual ? "manual" : "sola" });
       proximaVueltaManual = false;
     };
 
-    const escucharPista = (pista: MediaStreamTrack) => {
-      quitarEscuchasPista();
-      const silenciada = () => anotar({ tipo: "corte", en: Date.now(), motivo: "pista" });
-      const activa = () => { if (conexion?.pc.connectionState === "connected") volvio(); };
-      const terminada = () => {
-        anotar({ tipo: "corte", en: Date.now(), motivo: "pista" });
-        void recuperarCamara();
-      };
-      pista.addEventListener("mute", silenciada);
-      pista.addEventListener("unmute", activa);
-      pista.addEventListener("ended", terminada);
-      quitarEscuchasPista = () => {
-        pista.removeEventListener("mute", silenciada);
-        pista.removeEventListener("unmute", activa);
-        pista.removeEventListener("ended", terminada);
-      };
+    const escucharPistas = (stream: MediaStream) => {
+      escuchas.abort();
+      escuchas = new AbortController();
+      const { signal } = escuchas;
+      const corte = () => anotar({ tipo: "corte", en: Date.now(), motivo: "pista" });
+      for (const pista of stream.getTracks()) {
+        pista.addEventListener("mute", corte, { signal });
+        pista.addEventListener("unmute", () => { if (conectada()) volvio(); }, { signal });
+        pista.addEventListener("ended", () => {
+          corte();
+          void (pista.kind === "video" ? recuperarCamara() : recuperarSonido());
+        }, { signal });
+      }
     };
 
     const ponerVideo = (stream: MediaStream) => {
@@ -141,34 +144,72 @@ function Sesion({ modo, url, onSalir }: { modo: Modo; url: string; onSalir(): vo
       });
     };
 
-    /** Cambia la pista de video que se manda, sin reconectar. */
-    const reemplazarVideo = async (nueva: MediaStreamTrack) => {
-      const vieja = camara?.getVideoTracks()[0];
-      if (vieja) { camara!.removeTrack(vieja); vieja.stop(); }
-      camara!.addTrack(nueva);
-      escucharPista(nueva);
-      const emisor = conexion?.pc.getSenders().find((s) => s.track?.kind === "video" || s.track === null);
-      await emisor?.replaceTrack(nueva);
-      ponerVideo(camara!);
+    const emisorDe = (tipo: "video" | "audio") =>
+      conexion?.pc.getTransceivers().find((t) => t.receiver.track.kind === tipo)?.sender;
+
+    /** Pide una pista nueva (imagen o sonido) y la cambia por la anterior sin reconectar. */
+    const renovarPista = async (tipo: "video" | "audio") => {
+      const nueva = tipo === "video"
+        ? pistaDeVideo(await pedirCamara(frente, false))
+        : (await navigator.mediaDevices.getUserMedia({ audio: true })).getAudioTracks()[0];
+      if (!nueva) throw new Error("Sin micrófono");
+      try {
+        const vieja = camara!.getTracks().find((p) => p.kind === tipo);
+        if (vieja) { camara!.removeTrack(vieja); vieja.stop(); }
+        camara!.addTrack(nueva);
+        escucharPistas(camara!);
+        await emisorDe(tipo)?.replaceTrack(nueva);
+        if (tipo === "video") ponerVideo(camara!);
+      } catch (error) {
+        nueva.stop();
+        throw error;
+      }
     };
 
     async function recuperarCamara() {
-      if (!activo || modo !== "transmitir") return;
+      if (!activo || modo !== "transmitir" || !camara) return;
       try {
-        const nueva = pistaDeVideo(await pedirCamara(frente, false));
-        await reemplazarVideo(nueva);
-        if (conexion?.pc.connectionState === "connected") volvio();
+        await renovarPista("video");
+        camaraCaida = false;
+        if (conectada()) { cambiarEstado("en-vivo"); volvio(); }
       } catch {
+        camaraCaida = true;
         cambiarEstado("manual");
       }
     }
 
+    async function recuperarSonido() {
+      if (!activo || !conSonido || !camara) return;
+      try {
+        await renovarPista("audio");
+      } catch {
+        toast.error("Se perdió el sonido de la transmisión");
+      }
+    }
+
+    async function prenderCamara() {
+      const stream = await pedirCamara(frente, true).catch((error: unknown) => {
+        // Sin micrófono (por ejemplo, una computadora): se transmite solo la imagen.
+        if (!(error instanceof DOMException && error.name === "NotFoundError")) throw error;
+        toast("No se encontró micrófono: se transmite sin sonido");
+        return pedirCamara(frente, false);
+      });
+      if (!activo) { stream.getTracks().forEach((p) => p.stop()); return; }
+      camara = stream;
+      conSonido = stream.getAudioTracks().length > 0;
+      camaraCaida = false;
+      escucharPistas(stream);
+      ponerVideo(stream);
+      void conectar();
+    }
+
     async function conectar() {
       if (!activo) return;
-      cambiarEstado(lista.length ? "reconectando" : "conectando");
+      const mio = ++generacion;
+      cambiarEstado(lista.length > 1 ? "reconectando" : "conectando");
       try {
         const nueva = modo === "transmitir" ? await transmitir(url, camara!) : await mirar(url);
-        if (!activo) { await nueva.cerrar(); return; }
+        if (!activo || mio !== generacion) { await nueva.cerrar(); return; }
         conexion = nueva;
         ultimosCuadros = null;
         segundosCongelado = 0;
@@ -178,35 +219,46 @@ function Sesion({ modo, url, onSalir }: { modo: Modo; url: string; onSalir(): vo
           const s = nueva.pc.connectionState;
           if (s === "connected") {
             intento = 0;
-            cambiarEstado("en-vivo");
-            if (modo === "transmitir") volvio();
+            cambiarEstado(camaraCaida ? "manual" : "en-vivo");
+            if (modo === "transmitir" && !camaraCaida) volvio();
           } else if (s === "disconnected" || s === "failed") {
             anotar({ tipo: "corte", en: Date.now(), motivo: "conexion" });
-            cambiarEstado("reconectando");
+            cambiarEstado(camaraCaida ? "manual" : "reconectando");
             if (s === "failed") void reconectar();
           }
         });
       } catch {
-        void reconectar();
+        if (mio === generacion) void reconectar();
       }
     }
 
+    /** Cierra la conexión actual y programa un solo reintento, aunque lo pidan varias señales. */
     async function reconectar() {
-      if (!activo) return;
+      if (!activo || reconexionPendiente) return;
+      reconexionPendiente = true;
+      generacion++;
       const anterior = conexion;
       conexion = null;
       await anterior?.cerrar();
-      cambiarEstado("reconectando");
-      const espera = esperaReconexion(intento++);
-      setTimeout(() => void conectar(), espera);
+      if (!camaraCaida) cambiarEstado("reconectando");
+      setTimeout(() => {
+        reconexionPendiente = false;
+        void conectar();
+      }, esperaReconexion(intento++));
     }
 
     // Cada segundo: cuadros nuevos (para detectar imagen congelada) y cada 10 s una muestra.
     const reloj = setInterval(async () => {
       setAhora(Date.now());
-      const pc = conexion?.pc;
-      if (!pc || pc.connectionState !== "connected") return;
-      const reporte = await pc.getStats();
+      const actual = conexion;
+      if (!actual || actual.pc.connectionState !== "connected") return;
+      let reporte: RTCStatsReport;
+      try {
+        reporte = await actual.pc.getStats();
+      } catch {
+        return;
+      }
+      if (conexion !== actual) return;
       const m = leerMuestra(reporte.values() as Iterable<Record<string, unknown>>, modo);
       if (modo === "mirar" && m.cuadros !== null) {
         if (ultimosCuadros !== null && m.cuadros === ultimosCuadros) {
@@ -235,12 +287,14 @@ function Sesion({ modo, url, onSalir }: { modo: Modo; url: string; onSalir(): vo
         setEstado("terminado");
       },
       async cambiarCamara() {
+        const anterior = frente;
         frente = frente === "user" ? "environment" : "user";
-        quitarEscuchasPista();
+        // Algunos celulares no prenden la otra cámara mientras la actual sigue encendida.
         camara?.getVideoTracks()[0]?.stop();
         try {
-          await reemplazarVideo(pistaDeVideo(await pedirCamara(frente, false)));
+          await renovarPista("video");
         } catch {
+          frente = anterior;
           toast.error("No se pudo cambiar de cámara");
           await recuperarCamara();
         }
@@ -248,8 +302,11 @@ function Sesion({ modo, url, onSalir }: { modo: Modo; url: string; onSalir(): vo
       async volverATransmitir() {
         proximaVueltaManual = true;
         try {
-          await reemplazarVideo(pistaDeVideo(await pedirCamara(frente, false)));
-          if (conexion?.pc.connectionState === "connected") { cambiarEstado("en-vivo"); volvio(); }
+          if (!camara) { await prenderCamara(); return; }
+          await renovarPista("video");
+          if (conSonido && camara.getAudioTracks()[0]?.readyState !== "live") await recuperarSonido();
+          camaraCaida = false;
+          if (conectada()) { cambiarEstado("en-vivo"); volvio(); }
           else void reconectar();
         } catch {
           toast.error("No se pudo prender la cámara");
@@ -260,7 +317,8 @@ function Sesion({ modo, url, onSalir }: { modo: Modo; url: string; onSalir(): vo
     function cerrarTodo() {
       activo = false;
       clearInterval(reloj);
-      quitarEscuchasPista();
+      escuchas.abort();
+      generacion++;
       void conexion?.cerrar();
       conexion = null;
       camara?.getTracks().forEach((p) => p.stop());
@@ -268,24 +326,11 @@ function Sesion({ modo, url, onSalir }: { modo: Modo; url: string; onSalir(): vo
 
     anotar({ tipo: "inicio", en: Date.now() });
     if (modo === "transmitir") {
-      pedirCamara(frente, true)
-        .catch((error: unknown) => {
-          // Sin micrófono (por ejemplo, una computadora): se transmite solo la imagen.
-          if (!(error instanceof DOMException && error.name === "NotFoundError")) throw error;
-          toast("No se encontró micrófono: se transmite sin sonido");
-          return pedirCamara(frente, false);
-        })
-        .then((stream) => {
-          if (!activo) { stream.getTracks().forEach((p) => p.stop()); return; }
-          camara = stream;
-          escucharPista(pistaDeVideo(stream));
-          ponerVideo(stream);
-          void conectar();
-        })
-        .catch(() => {
-          toast.error("No se pudo usar la cámara. Revisá los permisos del navegador.");
-          cambiarEstado("manual");
-        });
+      prenderCamara().catch(() => {
+        toast.error("No se pudo usar la cámara. Revisá los permisos del navegador.");
+        camaraCaida = true;
+        cambiarEstado("manual");
+      });
     } else {
       void conectar();
     }

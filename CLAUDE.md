@@ -181,7 +181,7 @@ Next.js es "todo en uno": cada pantalla y las acciones del servidor que usa vive
 |---|---|---|
 | `src/app/` | Una carpeta por dirección de la app. Adentro: `page.tsx` (la pantalla) y, si guarda datos, `acciones.ts` (Server Actions: el "backend" de esa pantalla) | Pantallas + servidor |
 | `src/components/` | Piezas visuales reutilizables, agrupadas por tema: `ui/` (shadcn), `marca/`, `navegacion/`, `fotos/`, `tiendas/` | Interfaz |
-| `src/lib/` | Lógica sin pantalla, por tema: `tiendas/` (validaciones, entregas, lecturas de datos, tipos), `fotos/` (compresión, subida, rutas), `format/` (plata y fechas), `auth/`, `supabase/` (conexiones), `red.ts` (errores de conexión) | Reglas del negocio |
+| `src/lib/` | Lógica sin pantalla, por tema: `tiendas/` (validaciones, entregas, lecturas de datos, tipos), `vivos/` (Cloudflare Stream, WebRTC, registro de cortes), `fotos/` (compresión, subida, rutas), `format/` (plata y fechas), `auth/`, `supabase/` (conexiones), `red.ts` (errores de conexión) | Reglas del negocio |
 | `src/db/schema.ts` | Descripción de las tablas (Drizzle) | Base de datos |
 | `drizzle/` | Migraciones numeradas: las `seguridad_*.sql` tienen los permisos (RLS), funciones y reglas de Storage | Base de datos |
 | `src/proxy.ts` | Corre antes de cada página: renueva la sesión y protege `/cuenta` y `/mi-puesto` | Seguridad |
@@ -200,6 +200,7 @@ Next.js es "todo en uno": cada pantalla y las acciones del servidor que usa vive
 | `/mi-puesto` y debajo (`armar`, `tienda`, `productos`) | `src/app/mi-puesto/…` | Feriantes |
 | `/invitacion/[token]` | `src/app/invitacion/[token]/` | Quien recibe una invitación |
 | `/admin` | `src/app/admin/` | Solo administradores (los demás ven "no encontrada") |
+| `/prueba-vivo` | `src/app/prueba-vivo/` | Solo administradores. Prueba de transmisión descartable: se borra cuando exista la sala |
 | `/cuenta` | `src/app/cuenta/` | Con sesión |
 | `/auth/callback` | `src/app/auth/callback/route.ts` | Vuelta del login de Google |
 | `/diseno` | `src/app/diseno/` | Muestra interna del sistema de diseño |

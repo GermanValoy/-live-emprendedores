@@ -132,3 +132,24 @@ Cloudflare cobra 1 USD cada 1.000 minutos mirados. La prueba completa ronda los 
 - Cliente WebRTC propio o librería chica (preferencia: propio si es corto).
 - Cómo organizar los componentes de la pantalla de prueba.
 - Resolución de la cámara a pedir (sugerencia: 720p, 30 cuadros por segundo).
+
+## 11. Resultados
+
+### 2026-10-18 · Android transmite (Wi-Fi)
+
+| Punto | Resultado |
+|---|---|
+| Duración | 6 minutos, **0 cortes** |
+| Conexión hasta Cloudflare | 13 a 70 ms (estimado del lado que transmite) |
+| Atraso estimado del lado que mira | 0,1 a 0,2 s (meta: menos de 2 s) |
+| Calidad | Vertical. Arranca baja (180×320) y sube sola hasta 540×960 en unos 2 minutos; sobre el final bajó a 360×640. Lo ajusta el navegador según la conexión |
+| Cambiar a WhatsApp u otra app | La conexión **no se corta** (no se registra corte), pero el celular deja de informar cuadros y atraso mientras está en otra app. Falta saber qué ve quien mira en ese momento |
+
+**Para tener en cuenta en la sala:** los primeros segundos de un vivo se ven en baja calidad hasta que el navegador sube la resolución.
+
+### Pendiente
+
+- Medición del atraso completo con los dos relojes (captura).
+- Qué ve quien mira cuando el Android se va a otra app.
+- **iPhone transmitiendo** (todo el guion de la sección 4.5): es lo más incierto.
+- Vuelta con datos móviles.

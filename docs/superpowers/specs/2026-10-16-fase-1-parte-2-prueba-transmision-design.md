@@ -147,9 +147,38 @@ Cloudflare cobra 1 USD cada 1.000 minutos mirados. La prueba completa ronda los 
 
 **Para tener en cuenta en la sala:** los primeros segundos de un vivo se ven en baja calidad hasta que el navegador sube la resolución.
 
-### Pendiente
+### 2026-10-20 · Android transmite (Wi-Fi) → otro Android mira (datos móviles 4G)
 
-- Medición del atraso completo con los dos relojes (captura).
-- Qué ve quien mira cuando el Android se va a otra app.
-- **iPhone transmitiendo** (todo el guion de la sección 4.5): es lo más incierto.
-- Vuelta con datos móviles.
+| Punto | Resultado |
+|---|---|
+| Lado que transmite | 7 minutos, **0 cortes**, 360×640 a 28–32 cuadros por segundo, conexión hasta Cloudflare 12 a 18 ms |
+| Lado que mira | 2 minutos con **4G**. Al arrancar, **1 corte de 10 s** (sin imagen) que **se recuperó solo**; después estable: 360×640 a 30 cuadros por segundo, atraso estimado 27 a 69 ms |
+| Atraso completo (relojes) | No se pudo medir: la captura no muestra el reloj filmado dentro del video |
+
+**Para tener en cuenta en la sala:** con datos móviles, quien mira puede quedarse unos segundos sin imagen al entrar; la reconexión automática funciona, pero conviene mostrarle un mensaje tipo "Conectando…" en lugar de una pantalla negra.
+
+### 2026-10-25 · iPhone transmite desde Safari (Wi-Fi) → Android mira
+
+| Punto | Resultado |
+|---|---|
+| ¿Funciona en iPhone? | **Sí**, desde Safari, sin instalar nada |
+| Duración | 12 minutos |
+| Calidad | Vertical, **720×1280** a 30 cuadros por segundo casi todo el tiempo (mejor que el Android). Arranca en 180×320 y sube sola en 1 a 2 minutos |
+| Conexión hasta Cloudflare | 14 a 93 ms (casi siempre 14 a 16 ms) |
+| **Atraso completo (relojes)** | **0,3 s** (reloj real 21:31:15.3, reloj filmado 21:31:15.0). Meta: menos de 2 s |
+| Cambiar a WhatsApp | La conexión **no se corta**, pero el iPhone **deja de mandar imagen** (los cuadros por segundo bajan a 16, 1 y nada). Al volver, arranca de nuevo en baja calidad y sube sola |
+| Cortes | 4 del tipo "cámara o sonido" (11 s, 7 s, 10 s y 10 s), **los 4 se recuperaron solos**. Falta confirmar si todos fueron al salir de Safari |
+
+**Para tener en cuenta en la sala:** el navegador alcanza para transmitir en iPhone y en Android, así que no hace falta una app. Salir de Safari detiene la imagen: la sala tiene que avisarle a la vendedora que no salga de la pantalla mientras está en vivo, y mostrarle a quien mira un mensaje tipo "La vendedora volverá en un momento".
+
+**Lado que mira (Android, Wi-Fi), primeros 2 minutos:** 2 cortes de 1 s al arrancar (sin imagen), los dos se recuperaron solos. Después 720×1280, atraso estimado 61 a 156 ms. Los cuadros por segundo bajan por momentos (10 y 4) en los mismos instantes en que bajan en el iPhone: el problema viene del lado que transmite, no del que mira. Imagen nítida y fluida a simple vista.
+
+### 2026-10-26 · Qué ve quien mira cuando la vendedora sale de la pantalla
+
+Observado por el dueño: si el celular que transmite minimiza el navegador o abre otra aplicación, quien mira ve la **pantalla negra pero sigue escuchando el sonido**.
+
+**Riesgo de privacidad:** si la vendedora sale a atender una llamada o a mandar un audio de WhatsApp, las compradoras la escuchan. **Requisito para la sala:** al salir de la pantalla, el micrófono se silencia solo; quien mira ve un cartel tipo "La vendedora vuelve en un momento"; al volver, se reactiva el sonido (o se le pregunta a la vendedora).
+
+### Conclusión (2026-10-26)
+
+**La prueba se da por cerrada: el navegador alcanza para transmitir en iPhone y en Android**, sin instalar ninguna app, con buena calidad (hasta 720×1280) y 0,3 s de atraso de punta a punta. Los cortes observados duran segundos y se recuperan solos. Quedan para probar con la sala ya armada: transmitir con datos móviles y la causa exacta de los cortes del iPhone (probablemente al salir de Safari).

@@ -56,6 +56,22 @@ export async function crearTiendaPrueba(
   return { id, handle };
 }
 
+/** Simula la transmision de Cloudflare de un puesto (las pruebas nunca llaman a Cloudflare). */
+export async function crearTransmisionPrueba(storeId: string): Promise<void> {
+  const { error } = await clienteAdmin().from("store_streams").insert({
+    store_id: storeId,
+    cloudflare_uid: `prueba-${storeId}`,
+    whip_url: "https://cloudflare.invalid/whip",
+    whep_url: "https://cloudflare.invalid/whep",
+  });
+  if (error) throw error;
+}
+
+export async function borrarVivosDeTienda(storeId: string): Promise<void> {
+  const { error } = await clienteAdmin().from("live_sessions").delete().eq("store_id", storeId);
+  if (error) throw error;
+}
+
 export async function borrarFotosDeTienda(storeId: string): Promise<void> {
   const bucket = clienteAdmin().storage.from("tienda-fotos");
   for (const carpeta of ["perfil", "portada", "productos"]) {

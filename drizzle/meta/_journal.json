@@ -29,6 +29,20 @@
       "when": 1792018489824,
       "tag": "0003_seguridad_tiendas",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1793132124930,
+      "tag": "0004_secret_robin_chapel",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1793132132777,
+      "tag": "0005_seguridad_vivos",
+      "breakpoints": true
     }
   ]
 }

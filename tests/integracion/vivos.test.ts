@@ -54,7 +54,7 @@ describe("vivos", () => {
     expect(error).toBeNull();
     const { data } = await clienteAnonimo().from("live_sessions").select("id, whep_url").eq("store_id", tiendaMica.id);
     expect(data).toHaveLength(1);
-    expect(data![0].id).toBe(id);
+    expect(data?.[0]?.id).toBe(id);
     const { data: cfg } = await clienteAnonimo().from("live_config").select("*").single();
     expect(cfg).toEqual({ id: 1, sin_conexion_segundos: 300, fuera_segundos: 900, senal_cada_segundos: 20 });
   });
@@ -101,7 +101,7 @@ describe("vivos", () => {
     expect(r1.data).toBe(r2.data);
     const { data } = await clienteAdmin().from("live_sessions").select("*").eq("store_id", tiendaMica.id).is("ended_at", null);
     expect(data).toHaveLength(1);
-    expect([A, B]).toContain(data![0].device_id);
+    expect([A, B]).toContain(data?.[0]?.device_id);
   });
 
   it("nadie escribe directo", async () => {

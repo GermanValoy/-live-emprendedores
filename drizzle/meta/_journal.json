@@ -43,6 +43,13 @@
       "when": 1793132132777,
       "tag": "0005_seguridad_vivos",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1793135881326,
+      "tag": "0006_vivos_transmision_del_servidor",
+      "breakpoints": true
     }
   ]
 }

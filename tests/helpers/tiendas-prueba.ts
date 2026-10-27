@@ -56,7 +56,7 @@ export async function crearTiendaPrueba(
   return { id, handle };
 }
 
-/** Simula la transmision de Cloudflare de un puesto (las pruebas nunca llaman a Cloudflare). */
+/** Simula la transmisión de Cloudflare de un puesto (las pruebas nunca llaman a Cloudflare). */
 export async function crearTransmisionPrueba(storeId: string): Promise<void> {
   const { error } = await clienteAdmin().from("store_streams").insert({
     store_id: storeId,

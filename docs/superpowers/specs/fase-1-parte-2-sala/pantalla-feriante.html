@@ -1,0 +1,81 @@
+<style>
+  .tel { width: 260px; height: 540px; border-radius: 34px; background: #160d13; border: 8px solid #2a1a23; position: relative; overflow: hidden; margin: 0 auto; font-family: system-ui, sans-serif; color: #f8eff4; }
+  .cam { position: absolute; inset: 0; background: linear-gradient(160deg, #6b4a5a 0%, #3d2a33 45%, #1e1218 100%); }
+  .cam .persona { position: absolute; left: 50%; top: 34%; transform: translateX(-50%); width: 110px; height: 110px; border-radius: 50%; background: #8d6b7a; }
+  .cam .cuerpo { position: absolute; left: 50%; top: 52%; transform: translateX(-50%); width: 190px; height: 220px; border-radius: 90px 90px 0 0; background: #a33b6a; }
+  .chip { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 700; padding: 4px 9px; border-radius: 999px; }
+  .envivo { background: #d7261e; color: #fff; }
+  .oscuro { background: rgba(0,0,0,.55); color: #fff; }
+  .arriba { position: absolute; top: 14px; left: 12px; right: 12px; display: flex; justify-content: space-between; align-items: center; }
+  .abajo { position: absolute; bottom: 14px; left: 12px; right: 12px; display: flex; justify-content: space-between; align-items: flex-end; }
+  .redondo { width: 46px; height: 46px; border-radius: 50%; background: rgba(0,0,0,.5); display: flex; align-items: center; justify-content: center; font-size: 19px; }
+  .col { display: flex; flex-direction: column; gap: 10px; align-items: center; }
+  .col small { font-size: 9px; margin-top: -6px; opacity: .85; }
+  .terminar { background: #fff; color: #b0135f; font-weight: 800; font-size: 13px; padding: 11px 16px; border-radius: 999px; }
+  .wa { background: #1fa855; color: #fff; font-weight: 700; font-size: 12px; padding: 10px 13px; border-radius: 999px; }
+  .videoB { position: relative; height: 300px; overflow: hidden; border-radius: 0 0 22px 22px; }
+  .panel { padding: 12px; display: flex; flex-direction: column; gap: 8px; }
+  .fila { display: flex; gap: 8px; }
+  .btn { flex: 1; background: #2e1c27; border-radius: 14px; padding: 10px 6px; text-align: center; font-size: 11px; font-weight: 600; }
+  .btn big { display: block; font-size: 17px; }
+  .terminarB { background: #3d1b2e; color: #ff8fb8; text-align: center; font-weight: 800; padding: 11px; border-radius: 14px; font-size: 13px; }
+  .waB { background: #1fa855; color: #fff; text-align: center; font-weight: 700; padding: 11px; border-radius: 14px; font-size: 13px; }
+  .nota { font-size: 12px; color: #c9b3bf; }
+</style>
+
+<h2>La pantalla de la feriante mientras está en vivo</h2>
+<p class="subtitle">Elegí cuál se parece más a cómo te imaginás a la feriante con el celular en la mano. Lo de los ojos (👁 12) es cuánta gente está mirando.</p>
+
+<div class="cards">
+  <div class="card" data-choice="a" onclick="toggleSelect(this)">
+    <div class="card-image" style="padding:16px 0">
+      <div class="tel">
+        <div class="cam"><div class="persona"></div><div class="cuerpo"></div></div>
+        <div class="arriba">
+          <span class="chip envivo">● EN VIVO · 12:34</span>
+          <span class="chip oscuro">👁 12</span>
+        </div>
+        <div class="abajo">
+          <div class="wa">Avisar por WhatsApp</div>
+          <div class="col">
+            <div class="redondo">🎙</div><small>Silenciar</small>
+            <div class="redondo">🔄</div><small>Cámara</small>
+            <div class="terminar">Terminar</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>A · Pantalla completa</h3>
+      <p>Como Instagram o TikTok: la cámara ocupa todo y los botones flotan encima. Se ve más el producto. Más adelante el chat y los códigos también aparecen encima del video.</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="b" onclick="toggleSelect(this)">
+    <div class="card-image" style="padding:16px 0">
+      <div class="tel">
+        <div class="videoB">
+          <div class="cam"><div class="persona" style="top:22%"></div><div class="cuerpo" style="top:52%"></div></div>
+          <div class="arriba">
+            <span class="chip envivo">● EN VIVO · 12:34</span>
+            <span class="chip oscuro">👁 12</span>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="fila">
+            <div class="btn"><big>🎙</big>Silenciar</div>
+            <div class="btn"><big>🔄</big>Cámara</div>
+          </div>
+          <div class="waB">Avisar por WhatsApp</div>
+          <div class="terminarB">Terminar el vivo</div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>B · Video arriba, botones abajo</h3>
+      <p>Como la página de prueba que ya usaste: video arriba y botones grandes debajo. Más difícil tocar algo sin querer, pero el producto se ve más chico.</p>
+    </div>
+  </div>
+</div>
+
+<p class="nota">Las dos tienen lo mismo: cartel EN VIVO con el tiempo, cuánta gente mira, silenciar, dar vuelta la cámara, avisar por WhatsApp y terminar. Antes de cortar se pregunta "¿Seguro que querés terminar?".</p>

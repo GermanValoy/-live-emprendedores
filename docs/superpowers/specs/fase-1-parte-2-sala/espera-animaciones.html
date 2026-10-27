@@ -1,0 +1,151 @@
+<style>
+  :root { --lapacho: #c2186b; --lapacho-claro: #ff6fae; --limon: #f5d90a; --vivo: #d7261e; --fondo: #160d13; --texto: #f8eff4; --suave: #c9b3bf; --ease-out: cubic-bezier(0.23, 1, 0.32, 1); --ease-io: cubic-bezier(0.77, 0, 0.175, 1); }
+  .tel { width: 240px; height: 500px; border-radius: 32px; background: var(--fondo); border: 8px solid #2a1a23; position: relative; overflow: hidden; margin: 0 auto; font-family: system-ui, sans-serif; color: var(--texto); isolation: isolate; }
+  .cabeza { position: absolute; top: 14px; left: 12px; right: 12px; display: flex; align-items: center; gap: 8px; background: rgba(0,0,0,.4); backdrop-filter: blur(6px); border-radius: 999px; padding: 5px 10px 5px 5px; z-index: 5; font-size: 12px; font-weight: 700; }
+  .mini { width: 26px; height: 26px; border-radius: 50%; background: var(--limon); display: grid; place-items: center; font-size: 13px; }
+  .seguir { margin-left: auto; background: var(--lapacho); color: #fff; font-size: 10px; padding: 5px 10px; border-radius: 999px; }
+  .pie { position: absolute; bottom: 16px; left: 0; right: 0; text-align: center; font-size: 11px; color: var(--suave); z-index: 5; padding: 0 18px; line-height: 1.4; }
+  .titulo { font-size: 24px; font-weight: 900; letter-spacing: -.02em; }
+  .titulo span { display: inline-block; }
+
+  /* ===== A · Puesto de feria ===== */
+  .a .toldo { position: absolute; top: 70px; left: -10px; right: -10px; height: 70px; display: flex; transform-origin: top center; animation: mecer 4s var(--ease-io) infinite; z-index: 2; }
+  .a .toldo i { flex: 1; background: var(--lapacho); border-radius: 0 0 50% 50% / 0 0 40% 40%; }
+  .a .toldo i:nth-child(even) { background: #fff3f8; }
+  @keyframes mecer { 0%,100% { transform: rotate(-1.2deg); } 50% { transform: rotate(1.2deg); } }
+  .a .guirnalda { position: absolute; top: 150px; left: 6px; right: 6px; height: 40px; z-index: 3; }
+  .a .guirnalda svg { position: absolute; inset: 0; }
+  .a .lamp { position: absolute; width: 12px; height: 12px; border-radius: 50%; background: var(--limon); box-shadow: 0 0 12px 3px rgba(245,217,10,.7); animation: titilar 1.8s ease-in-out infinite; }
+  @keyframes titilar { 0%,100% { opacity: .25; box-shadow: 0 0 0 0 rgba(245,217,10,0); } 50% { opacity: 1; box-shadow: 0 0 14px 4px rgba(245,217,10,.75); } }
+  .a .centro { position: absolute; top: 225px; left: 0; right: 0; text-align: center; z-index: 4; }
+  .a .titulo span { animation: saltito 2.4s var(--ease-out) infinite; }
+  @keyframes saltito { 0%, 60%, 100% { transform: translateY(0); } 20% { transform: translateY(-9px); } }
+  .a .cartel { display: inline-block; margin-top: 14px; background: #2e1c27; border: 2px dashed var(--limon); color: var(--limon); font-weight: 800; font-size: 12px; padding: 7px 14px; border-radius: 10px; transform: rotate(-3deg); }
+  .a .mostrador { position: absolute; bottom: 0; left: 0; right: 0; height: 120px; background: linear-gradient(#3d1b2e, #22141d); border-top: 4px solid #5a2a43; z-index: 1; }
+
+  /* ===== B · Señal que se enciende ===== */
+  .b .aura { position: absolute; inset: -40%; z-index: 0; filter: blur(38px); opacity: .85; }
+  .b .aura i { position: absolute; width: 55%; height: 45%; border-radius: 50%; }
+  .b .aura i:nth-child(1) { background: var(--lapacho); top: 20%; left: 10%; animation: flotar1 9s ease-in-out infinite; }
+  .b .aura i:nth-child(2) { background: #6a1b9a; top: 45%; left: 40%; animation: flotar2 11s ease-in-out infinite; }
+  .b .aura i:nth-child(3) { background: #d7261e; top: 30%; left: 45%; opacity: .6; animation: flotar1 13s ease-in-out infinite reverse; }
+  @keyframes flotar1 { 0%,100% { transform: translate(0,0) scale(1); } 50% { transform: translate(18%, 12%) scale(1.15); } }
+  @keyframes flotar2 { 0%,100% { transform: translate(0,0) scale(1.1); } 50% { transform: translate(-20%, -10%) scale(.9); } }
+  .b .anillo { position: absolute; top: 120px; left: 50%; width: 132px; height: 132px; margin-left: -66px; border-radius: 50%; z-index: 2; background: conic-gradient(from 0deg, var(--limon), var(--lapacho-claro), var(--vivo), var(--limon)); animation: girar 3s linear infinite; }
+  .b .anillo::after { content: ""; position: absolute; inset: 5px; border-radius: 50%; background: var(--fondo); }
+  @keyframes girar { to { transform: rotate(360deg); } }
+  .b .foto { position: absolute; top: 132px; left: 50%; width: 108px; height: 108px; margin-left: -54px; border-radius: 50%; background: var(--limon); display: grid; place-items: center; font-size: 48px; z-index: 3; animation: respirar 3s var(--ease-io) infinite; }
+  @keyframes respirar { 0%,100% { transform: scale(1); } 50% { transform: scale(.94); } }
+  .b .centro { position: absolute; top: 280px; left: 0; right: 0; text-align: center; z-index: 4; }
+  .b .neon { display: inline-block; font-weight: 900; font-size: 13px; letter-spacing: .12em; padding: 5px 12px; border-radius: 8px; border: 2px solid var(--vivo); color: #ff8a84; margin-bottom: 12px; animation: encender 4s steps(1) infinite; }
+  @keyframes encender { 0%, 8%, 12%, 100% { opacity: 1; text-shadow: 0 0 10px #ff4b42; box-shadow: 0 0 14px rgba(215,38,30,.6); } 6%, 10% { opacity: .35; text-shadow: none; box-shadow: none; } }
+  .b .puntos span { display: inline-block; animation: punto 1.4s ease-in-out infinite; }
+  .b .puntos span:nth-child(2) { animation-delay: .2s; } .b .puntos span:nth-child(3) { animation-delay: .4s; }
+  @keyframes punto { 0%,100% { opacity: .2; transform: translateY(0); } 40% { opacity: 1; transform: translateY(-4px); } }
+
+  /* ===== C · Lluvia de lapacho ===== */
+  .c { background: linear-gradient(180deg, #2a0f1f 0%, #160d13 70%); }
+  .c .petalo { position: absolute; top: -20px; width: 14px; height: 10px; background: var(--lapacho-claro); border-radius: 80% 0 80% 0; opacity: .9; z-index: 1; animation: caer linear infinite; }
+  @keyframes caer { 0% { transform: translate(0, -20px) rotate(0deg); } 50% { transform: translate(24px, 260px) rotate(200deg); } 100% { transform: translate(-10px, 540px) rotate(400deg); } }
+  .c .flor { position: absolute; top: 120px; left: 50%; width: 140px; height: 140px; margin-left: -70px; z-index: 2; animation: girar 18s linear infinite; }
+  .c .flor i { position: absolute; left: 50%; top: 50%; width: 52px; height: 52px; margin: -52px 0 0 -26px; background: var(--lapacho); border-radius: 50% 50% 50% 50% / 70% 70% 30% 30%; transform-origin: 50% 100%; opacity: .95; }
+  .c .flor i:nth-child(1) { transform: rotate(0deg); } .c .flor i:nth-child(2) { transform: rotate(72deg); } .c .flor i:nth-child(3) { transform: rotate(144deg); } .c .flor i:nth-child(4) { transform: rotate(216deg); } .c .flor i:nth-child(5) { transform: rotate(288deg); }
+  .c .corazon { position: absolute; top: 164px; left: 50%; width: 52px; height: 52px; margin-left: -26px; border-radius: 50%; background: var(--limon); display: grid; place-items: center; font-size: 24px; z-index: 3; box-shadow: 0 0 0 0 rgba(245,217,10,.6); animation: latido 2s var(--ease-out) infinite; }
+  @keyframes latido { 0% { box-shadow: 0 0 0 0 rgba(245,217,10,.55); } 70% { box-shadow: 0 0 0 22px rgba(245,217,10,0); } 100% { box-shadow: 0 0 0 0 rgba(245,217,10,0); } }
+  .c .centro { position: absolute; top: 295px; left: 0; right: 0; text-align: center; z-index: 4; }
+  .c .brillo { background: linear-gradient(90deg, var(--texto) 0%, var(--texto) 40%, var(--limon) 50%, var(--texto) 60%, var(--texto) 100%); background-size: 250% 100%; -webkit-background-clip: text; background-clip: text; color: transparent; animation: brillar 3s linear infinite; }
+  @keyframes brillar { from { background-position: 100% 0; } to { background-position: -150% 0; } }
+
+  .sub { font-size: 12px; color: var(--suave); margin-top: 8px; padding: 0 20px; line-height: 1.4; }
+
+  @media (prefers-reduced-motion: reduce) {
+    .tel *, .tel *::before, .tel *::after { animation-duration: 0s !important; animation-iteration-count: 1 !important; }
+  }
+</style>
+
+<h2>Tres animaciones para "¡Pronto arrancamos!"</h2>
+<p class="subtitle">Todas están hechas solo con CSS, así no le pesan al celular. Tocá la que más te guste (podés elegir más de una si querés combinar).</p>
+
+<div class="cards" data-multiselect>
+  <!-- A -->
+  <div class="card" data-choice="a-puesto" onclick="toggleSelect(this)">
+    <div class="card-image" style="padding:16px 0">
+      <div class="tel a">
+        <div class="cabeza"><div class="mini">🧶</div>Tejidos Mica<span class="seguir">Seguir</span></div>
+        <div class="toldo"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+        <div class="guirnalda">
+          <svg viewBox="0 0 220 40" preserveAspectRatio="none"><path d="M0 4 Q55 34 110 10 T220 4" stroke="#7a5a68" stroke-width="1.5" fill="none"/></svg>
+          <span class="lamp" style="left:8%;top:12px;animation-delay:0s"></span>
+          <span class="lamp" style="left:26%;top:22px;animation-delay:.3s"></span>
+          <span class="lamp" style="left:44%;top:14px;animation-delay:.6s"></span>
+          <span class="lamp" style="left:62%;top:8px;animation-delay:.9s"></span>
+          <span class="lamp" style="left:80%;top:12px;animation-delay:1.2s"></span>
+        </div>
+        <div class="mostrador"></div>
+        <div class="centro">
+          <div class="titulo">
+            <span style="animation-delay:0s">¡</span><span style="animation-delay:.05s">P</span><span style="animation-delay:.1s">r</span><span style="animation-delay:.15s">o</span><span style="animation-delay:.2s">n</span><span style="animation-delay:.25s">t</span><span style="animation-delay:.3s">o</span>
+          </div>
+          <div class="titulo" style="font-size:20px">
+            <span style="animation-delay:.4s">a</span><span style="animation-delay:.45s">r</span><span style="animation-delay:.5s">r</span><span style="animation-delay:.55s">a</span><span style="animation-delay:.6s">n</span><span style="animation-delay:.65s">c</span><span style="animation-delay:.7s">a</span><span style="animation-delay:.75s">m</span><span style="animation-delay:.8s">o</span><span style="animation-delay:.85s">s</span><span style="animation-delay:.9s">!</span>
+          </div>
+          <div class="cartel">Abrimos el puesto en un ratito</div>
+        </div>
+        <div class="pie">Quedate acá: cuando Mica salga en vivo, se abre sola.</div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>A · El puesto de feria</h3>
+      <p>Un toldo a rayas que se mece, una guirnalda de lamparitas que se prenden de a una y las letras dando saltitos. Es lo más "de feria" y lo más propio de la marca.</p>
+    </div>
+  </div>
+
+  <!-- B -->
+  <div class="card" data-choice="b-senal" onclick="toggleSelect(this)">
+    <div class="card-image" style="padding:16px 0">
+      <div class="tel b">
+        <div class="aura"><i></i><i></i><i></i></div>
+        <div class="cabeza"><div class="mini">🧶</div>Tejidos Mica<span class="seguir">Seguir</span></div>
+        <div class="anillo"></div>
+        <div class="foto">🧶</div>
+        <div class="centro">
+          <div class="neon">EN VIVO</div>
+          <div class="titulo">Pronto arrancamos<span class="puntos"><span>.</span><span>.</span><span>.</span></span></div>
+          <div class="sub">La foto del puesto con un anillo de colores que gira y el cartel EN VIVO "calentándose" como un neón.</div>
+        </div>
+        <div class="pie">Quedate acá: cuando Mica salga en vivo, se abre sola.</div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>B · La señal que se enciende</h3>
+      <p>Fondo de luces de colores que se mueven despacio, la foto del puesto con un anillo que gira (como las historias de Instagram) y el cartel EN VIVO que titila como un neón a punto de prenderse.</p>
+    </div>
+  </div>
+
+  <!-- C -->
+  <div class="card" data-choice="c-lapacho" onclick="toggleSelect(this)">
+    <div class="card-image" style="padding:16px 0">
+      <div class="tel c">
+        <span class="petalo" style="left:10%;animation-duration:7s;animation-delay:0s"></span>
+        <span class="petalo" style="left:30%;animation-duration:9s;animation-delay:-3s;transform:scale(.7)"></span>
+        <span class="petalo" style="left:52%;animation-duration:8s;animation-delay:-5s"></span>
+        <span class="petalo" style="left:70%;animation-duration:10s;animation-delay:-1s"></span>
+        <span class="petalo" style="left:86%;animation-duration:7.5s;animation-delay:-6s"></span>
+        <span class="petalo" style="left:20%;animation-duration:11s;animation-delay:-8s"></span>
+        <span class="petalo" style="left:62%;animation-duration:9.5s;animation-delay:-2s"></span>
+        <div class="cabeza"><div class="mini">🧶</div>Tejidos Mica<span class="seguir">Seguir</span></div>
+        <div class="flor"><i></i><i></i><i></i><i></i><i></i></div>
+        <div class="corazon">🧶</div>
+        <div class="centro">
+          <div class="titulo brillo">¡Pronto arrancamos!</div>
+          <div class="sub">Caen flores de lapacho, como en Tucumán en primavera.</div>
+        </div>
+        <div class="pie">Quedate acá: cuando Mica salga en vivo, se abre sola.</div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>C · Lluvia de lapacho</h3>
+      <p>Pétalos rosas que caen despacio, una flor de lapacho girando con la foto del puesto en el centro y un brillo amarillo que recorre el texto. El color de la marca sale justamente del lapacho.</p>
+    </div>
+  </div>
+</div>

@@ -10,6 +10,7 @@ import { formatARS } from "@/lib/format/plata";
 import { createClient } from "@/lib/supabase/server";
 import { contarSeguidores, idsSeguidos, listarProductos, obtenerEntregas, obtenerTiendaPorHandle } from "@/lib/tiendas/datos";
 import { resumenEntregas } from "@/lib/tiendas/entrega";
+import { handleDeRuta } from "@/lib/tiendas/validacion";
 
 function NoEncontrado() {
   return <EstadoVacio texto="No encontramos este puesto." accion={<Link href="/" className={buttonVariants()}>Ir al inicio</Link>} />;
@@ -19,7 +20,8 @@ async function Contenido({ params }: { params: Promise<{ handle: string }> }) {
   await connection();
   const { handle } = await params;
   const supabase = await createClient();
-  const tienda = await obtenerTiendaPorHandle(supabase, decodeURIComponent(handle));
+  const handleTienda = handleDeRuta(handle);
+  const tienda = handleTienda ? await obtenerTiendaPorHandle(supabase, handleTienda) : null;
   if (!tienda) return <NoEncontrado />;
   const userId = await obtenerUsuarioId(supabase);
   const [productos, opciones, seguidores, seguidos] = await Promise.all([

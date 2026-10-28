@@ -65,7 +65,8 @@ test("se abre sola cuando arranca", async ({ page }) => {
   const { mica, tienda } = await nuevaMica();
   await page.goto(`/@${tienda.handle}/vivo`);
   await expect(page.getByText("¡Pronto arrancamos!")).toBeVisible();
-  // El canal tarda un instante en conectarse: lo que pase mientras tanto se lee al conectar.
+  // Se espera a que el canal esté conectado: así el arranque llega por Realtime y no por la lectura inicial.
+  await expect(page.locator('main[data-canal="listo"]')).toBeAttached({ timeout: 30_000 });
   await abrirVivo(mica, tienda);
   await expect(page.getByText("EN VIVO", EN_VIVO)).toBeVisible({ timeout: 30_000 });
   await expect(page.getByText("¡Pronto arrancamos!")).toHaveCount(0);
@@ -94,14 +95,23 @@ test("sin sonido", async ({ page }) => {
 test("terminó", async ({ page }) => {
   const { mica, tienda } = await nuevaMica();
   const v = await abrirVivo(mica, tienda);
+  // Pedidos del reproductor para mirar (WHEP): mientras dura el vivo reintenta; al terminar, para.
+  let pedidosMirar = 0;
+  await page.route("https://cloudflare.invalid/**", (r) => {
+    pedidosMirar++;
+    return r.fulfill({ status: 503, body: "" });
+  });
   await page.goto(`/@${tienda.handle}/vivo`);
   await expect(page.getByText("EN VIVO", EN_VIVO)).toBeVisible();
+  await expect.poll(() => pedidosMirar, { timeout: 15_000 }).toBeGreaterThan(0);
   const { error } = await mica.cliente.rpc("terminar_vivo", { p_vivo: v.vivo });
   if (error) throw error;
   await expect(page.getByText("El vivo terminó. Gracias por acompañar a Mica.")).toBeVisible({ timeout: 30_000 });
   await expect(page.getByRole("link", { name: "Ver su tienda" })).toHaveAttribute("href", `/@${tienda.handle}`);
-  // Al terminar se suelta el video.
-  expect(await page.evaluate(() => (document.querySelector("video")?.srcObject ?? null) === null)).toBe(true);
+  // Al terminar se cierra el reproductor: no vuelve a pedir la transmisión (los reintentos son cada 10 s como mucho).
+  const alTerminar = pedidosMirar;
+  await page.waitForTimeout(11_000);
+  expect(pedidosMirar).toBe(alTerminar);
 });
 
 test("cuenta como mirando", async ({ page, browser }) => {
@@ -149,4 +159,12 @@ test("handle con mayúsculas", async ({ page }) => {
 test("puesto inexistente", async ({ page }) => {
   await page.goto("/@no.existe.nunca/vivo");
   await expect(page.getByText("No encontramos este puesto.")).toBeVisible();
+});
+
+test("dirección mal escrita", async ({ page }) => {
+  // "%25" es un "%" escrito: a la página le llega "%E0%A4%A", que no se puede decodificar.
+  for (const ruta of ["/@%25E0%25A4%25A/vivo", "/@%25E0%25A4%25A"]) {
+    await page.goto(ruta);
+    await expect(page.getByText("No encontramos este puesto.")).toBeVisible();
+  }
 });

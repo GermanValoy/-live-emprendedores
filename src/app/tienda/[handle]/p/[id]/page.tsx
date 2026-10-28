@@ -7,12 +7,14 @@ import { buttonVariants } from "@/components/ui/button";
 import { formatARS } from "@/lib/format/plata";
 import { createClient } from "@/lib/supabase/server";
 import { obtenerProducto, obtenerTiendaPorHandle } from "@/lib/tiendas/datos";
+import { handleDeRuta } from "@/lib/tiendas/validacion";
 
 async function Contenido({ params }: { params: Promise<{ handle: string; id: string }> }) {
   await connection();
   const { handle, id } = await params;
   const supabase = await createClient();
-  const tienda = await obtenerTiendaPorHandle(supabase, decodeURIComponent(handle));
+  const handleTienda = handleDeRuta(handle);
+  const tienda = handleTienda ? await obtenerTiendaPorHandle(supabase, handleTienda) : null;
   const producto = tienda ? await obtenerProducto(supabase, tienda.id, id) : null;
   if (!tienda || !producto || !producto.visible) {
     return <EstadoVacio texto="No encontramos este producto." accion={<Link href="/" className={buttonVariants()}>Ir al inicio</Link>} />;

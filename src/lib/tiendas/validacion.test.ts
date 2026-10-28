@@ -3,6 +3,7 @@ import {
   datosCobroSchema,
   datosTiendaSchema,
   errorDeHandle,
+  handleDeRuta,
   normalizarHandle,
   parsearPrecio,
   primerError,
@@ -13,6 +14,18 @@ describe("normalizarHandle", () => {
   it("saca arrobas, espacios y mayúsculas", () => {
     expect(normalizarHandle(" @RoperiaDeMica ")).toBe("roperiademica");
     expect(normalizarHandle("@@mica.ropa")).toBe("mica.ropa");
+  });
+});
+
+describe("handleDeRuta", () => {
+  it("decodifica el pedazo de la dirección", () => {
+    expect(handleDeRuta("mica.ropa")).toBe("mica.ropa");
+    expect(handleDeRuta("mi%C3%B1a")).toBe("miña");
+  });
+
+  it("devuelve null si la dirección viene rota (en lugar de romper la página)", () => {
+    expect(handleDeRuta("%E0%A4%A")).toBeNull();
+    expect(handleDeRuta("%")).toBeNull();
   });
 });
 

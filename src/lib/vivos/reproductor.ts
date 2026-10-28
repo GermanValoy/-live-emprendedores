@@ -7,7 +7,15 @@ import { esperaReconexion } from "./registro";
 import { type ConexionVivo, mirar } from "./webrtc";
 
 export type EstadoReproduccion = "conectando" | "reproduciendo" | "reconectando";
-export type Reproductor = { activarSonido(): void; cerrar(): void };
+export type Reproductor = {
+  activarSonido(): void;
+  /**
+   * En pausa no se reconecta por imagen congelada (ni se avisa "reconectando"): se usa mientras
+   * la feriante salió de la pantalla y su imagen queda quieta a propósito.
+   */
+  pausarReconexion(si: boolean): void;
+  cerrar(): void;
+};
 
 const SEGUNDOS_CONGELADO_PARA_RECONECTAR = 5;
 
@@ -42,6 +50,7 @@ export function crearReproductor(
   let ultimosCuadros: number | null = null;
   let segundosCongelado = 0;
   let avisoSinSonido = false;
+  let enPausa = false;
 
   const cambiarEstado = (e: EstadoReproduccion) => { if (activo) al.estado(e); };
 
@@ -106,14 +115,14 @@ export function crearReproductor(
   // Cada segundo: si la imagen no avanza durante unos segundos, se vuelve a pedir la transmisión.
   const reloj = setInterval(async () => {
     const actual = conexion;
-    if (!actual || actual.pc.connectionState !== "connected") return;
+    if (enPausa || !actual || actual.pc.connectionState !== "connected") return;
     let reporte: RTCStatsReport;
     try {
       reporte = await actual.pc.getStats();
     } catch {
       return;
     }
-    if (conexion !== actual) return;
+    if (enPausa || conexion !== actual) return;
     const { cuadros } = leerMuestra(reporte.values() as Iterable<Record<string, unknown>>, "mirar");
     if (cuadros === null) return;
     if (ultimosCuadros !== null && cuadros === ultimosCuadros) {
@@ -133,6 +142,13 @@ export function crearReproductor(
       video.muted = false;
       avisoSinSonido = false;
       void video.play().catch(() => undefined);
+    },
+    pausarReconexion(si) {
+      if (si === enPausa) return;
+      enPausa = si;
+      // Al volver se cuenta desde cero: la imagen tiene unos segundos para empezar a moverse.
+      ultimosCuadros = null;
+      segundosCongelado = 0;
     },
     cerrar() {
       if (!activo) return;

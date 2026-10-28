@@ -3,10 +3,12 @@ import { redirect } from "next/navigation";
 import { connection } from "next/server";
 import { Suspense } from "react";
 import { EstadoVacio } from "@/components/estado-vacio";
+import { BotonAvisarWhatsapp } from "@/components/vivos/boton-avisar-whatsapp";
 import { buttonVariants } from "@/components/ui/button";
 import { obtenerUsuarioId } from "@/lib/auth/sesion";
 import { createClient } from "@/lib/supabase/server";
 import { obtenerMiTienda } from "@/lib/tiendas/datos";
+import { vivoAbiertoDe } from "@/lib/vivos/datos";
 
 async function ContenidoMiPuesto({ searchParams }: { searchParams: Promise<{ listo?: string | string[] }> }) {
   await connection();
@@ -24,6 +26,8 @@ async function ContenidoMiPuesto({ searchParams }: { searchParams: Promise<{ lis
     );
   }
   const { listo } = await searchParams;
+  const completa = tienda.onboarding_step >= 5;
+  const vivoAbierto = completa ? await vivoAbiertoDe(supabase, tienda.id) : null;
   return (
     <>
       <h1 className="text-2xl font-extrabold">Hola, {tienda.name}</h1>
@@ -37,6 +41,18 @@ async function ContenidoMiPuesto({ searchParams }: { searchParams: Promise<{ lis
           <p className="font-semibold">Te falta terminar de armar tu puesto.</p>
           <Link href="/mi-puesto/armar" className={buttonVariants()}>Seguir armando</Link>
         </div>
+      )}
+      {completa && (
+        <section aria-label="En vivo" className="flex flex-col gap-2">
+          <Link
+            href="/mi-puesto/vivo"
+            className="flex h-16 items-center justify-center gap-2 rounded-full bg-vivo text-lg font-extrabold text-white shadow-[0_8px_24px_-8px] shadow-vivo/60 outline-none focus-visible:ring-3 focus-visible:ring-vivo/40 motion-safe:active:scale-[0.98]"
+          >
+            <span aria-hidden="true" className="size-2.5 rounded-full bg-white motion-safe:animate-pulse" />
+            {vivoAbierto ? "Volver a tu vivo" : "Salir en vivo"}
+          </Link>
+          <BotonAvisarWhatsapp handle={tienda.handle} momento={vivoAbierto ? "durante" : "antes"} />
+        </section>
       )}
       <nav aria-label="Opciones del puesto" className="grid gap-2">
         <Link href="/mi-puesto/productos" className={buttonVariants({ variant: "secondary" })}>Mis productos</Link>

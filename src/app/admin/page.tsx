@@ -62,8 +62,9 @@ async function ContenidoAdmin() {
 
   return (
     <>
+      <h1 className="sr-only">Administración</h1>
       <PanelVivos vivos={vivos} />
-      <h1 className="text-2xl font-extrabold">Invitaciones</h1>
+      <h2 className="text-2xl font-extrabold">Invitaciones</h2>
       <PanelInvitaciones filas={filas} />
     </>
   );

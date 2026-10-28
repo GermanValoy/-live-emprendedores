@@ -11,6 +11,7 @@ import { createClient } from "@/lib/supabase/server";
 import { contarSeguidores, idsSeguidos, listarProductos, obtenerEntregas, obtenerTiendaPorHandle } from "@/lib/tiendas/datos";
 import { resumenEntregas } from "@/lib/tiendas/entrega";
 import { handleDeRuta } from "@/lib/tiendas/validacion";
+import { vivoAbiertoDe } from "@/lib/vivos/datos";
 
 function NoEncontrado() {
   return <EstadoVacio texto="No encontramos este puesto." accion={<Link href="/" className={buttonVariants()}>Ir al inicio</Link>} />;
@@ -24,11 +25,12 @@ async function Contenido({ params }: { params: Promise<{ handle: string }> }) {
   const tienda = handleTienda ? await obtenerTiendaPorHandle(supabase, handleTienda) : null;
   if (!tienda) return <NoEncontrado />;
   const userId = await obtenerUsuarioId(supabase);
-  const [productos, opciones, seguidores, seguidos] = await Promise.all([
+  const [productos, opciones, seguidores, seguidos, vivo] = await Promise.all([
     listarProductos(supabase, tienda.id),
     obtenerEntregas(supabase, tienda.id),
     contarSeguidores(supabase, tienda.id),
     userId ? idsSeguidos(supabase, userId) : Promise.resolve(new Set<string>()),
+    vivoAbiertoDe(supabase, tienda.id),
   ]);
   const visibles = productos.filter((p) => p.visible);
 
@@ -54,6 +56,15 @@ async function Contenido({ params }: { params: Promise<{ handle: string }> }) {
         </p>
         {tienda.description && <p>{tienda.description}</p>}
       </div>
+      {vivo && (
+        <Link
+          href={`/@${tienda.handle}/vivo`}
+          className="flex min-h-12 items-center justify-center gap-2 rounded-xl bg-vivo px-4 py-3 text-center font-extrabold text-white"
+        >
+          <span aria-hidden="true" className="size-2 shrink-0 rounded-full bg-white motion-safe:animate-pulse" />
+          Está en vivo · Entrar a la sala
+        </Link>
+      )}
       {tienda.live_schedule_note && (
         <p className="rounded-xl bg-codigo/30 p-3 text-sm">📅 Suele estar en vivo <b>{tienda.live_schedule_note}</b></p>
       )}

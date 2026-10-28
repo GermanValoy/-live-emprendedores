@@ -92,14 +92,20 @@ export async function listarPuestos(supabase: SupabaseClient): Promise<PuestoRes
   return puestos.sort((a, b) => Number(b.productos.length > 0) - Number(a.productos.length > 0));
 }
 
-export async function listarSeguidos(supabase: SupabaseClient, userId: string): Promise<PuestoResumen[]> {
+/** Los puestos en vivo primero; el resto conserva su orden. */
+export function ordenarEnVivoPrimero<T extends { id: string }>(puestos: T[], enVivo: Set<string>): T[] {
+  return [...puestos].sort((a, b) => Number(enVivo.has(b.id)) - Number(enVivo.has(a.id)));
+}
+
+export async function listarSeguidos(supabase: SupabaseClient, userId: string, enVivo?: Set<string>): Promise<PuestoResumen[]> {
   const { data } = await supabase
     .from("follows")
     .select(`stores(${CAMPOS_PUESTO})`)
     .eq("user_id", userId)
     .order("created_at", { ascending: false });
-  return ((data as unknown as { stores: FilaPuesto | null }[] | null) ?? [])
+  const puestos = ((data as unknown as { stores: FilaPuesto | null }[] | null) ?? [])
     .flatMap((f) => (f.stores ? [aPuesto(f.stores)] : []));
+  return enVivo ? ordenarEnVivoPrimero(puestos, enVivo) : puestos;
 }
 
 export async function idsSeguidos(supabase: SupabaseClient, userId: string): Promise<Set<string>> {

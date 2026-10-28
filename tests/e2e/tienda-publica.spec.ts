@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { borrarUsuarioPrueba, clienteAdmin, crearUsuarioPrueba, type UsuarioPrueba } from "../helpers/usuario-prueba";
-import { crearTiendaPrueba } from "../helpers/tiendas-prueba";
+import { borrarVivosDeTienda, crearTiendaPrueba, crearTransmisionPrueba } from "../helpers/tiendas-prueba";
 import { cookiesDeSesion } from "./sesion";
 
 let feriante: UsuarioPrueba;
@@ -77,4 +77,23 @@ test("Seguir sin sesión pide entrar y vuelve a la tienda", async ({ page }) => 
   const pedido = page.waitForRequest((r) => r.url().includes("/auth/v1/authorize?provider=google"));
   await page.getByRole("button", { name: "Seguir" }).click();
   expect(decodeURIComponent(decodeURIComponent((await pedido).url()))).toContain(`next=/@${tienda.handle}`);
+});
+
+test("acceso destacado al vivo", async ({ page }) => {
+  await page.goto(`/@${tienda.handle}`);
+  await expect(page.getByRole("heading", { name: "La Ropería de Mica" })).toBeVisible();
+  await expect(page.getByText("Está en vivo · Entrar a la sala")).toHaveCount(0);
+  await crearTransmisionPrueba(tienda.id);
+  try {
+    const { error } = await feriante.cliente.rpc("abrir_vivo", { p_store: tienda.id, p_device: crypto.randomUUID() });
+    if (error) throw error;
+    await page.goto(`/@${tienda.handle}`);
+    const acceso = page.getByRole("link", { name: /Está en vivo · Entrar a la sala/ });
+    await expect(acceso).toHaveAttribute("href", `/@${tienda.handle}/vivo`);
+    const caja = await acceso.boundingBox();
+    expect(caja!.height).toBeGreaterThanOrEqual(44);
+  } finally {
+    await borrarVivosDeTienda(tienda.id);
+    await clienteAdmin().from("store_streams").delete().eq("store_id", tienda.id);
+  }
 });

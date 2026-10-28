@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { obtenerUsuarioId } from "@/lib/auth/sesion";
 import { createClient } from "@/lib/supabase/server";
 import { listarSeguidos } from "@/lib/tiendas/datos";
+import { idsPuestosEnVivo } from "@/lib/vivos/datos";
 
 async function ContenidoSeguidos() {
   await connection();
@@ -25,12 +26,13 @@ async function ContenidoSeguidos() {
       />
     );
   }
-  const puestos = await listarSeguidos(supabase, userId);
+  const enVivo = await idsPuestosEnVivo(supabase);
+  const puestos = await listarSeguidos(supabase, userId, enVivo);
   if (!puestos.length) return <EstadoVacio texto="Todavía no seguís ningún puesto. Tocá Seguir en los que te gusten." />;
   return (
     <div className="flex flex-col gap-3">
       {puestos.map((p) => (
-        <TarjetaPuesto key={p.id} puesto={p} siguiendo conSesion />
+        <TarjetaPuesto key={p.id} puesto={p} siguiendo conSesion enVivo={enVivo.has(p.id)} />
       ))}
     </div>
   );

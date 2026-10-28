@@ -1,10 +1,13 @@
 import Link from "next/link";
 import { Foto } from "@/components/fotos/foto";
+import { EnVivo } from "@/components/marca/en-vivo";
 import { formatARS } from "@/lib/format/plata";
 import type { PuestoResumen } from "@/lib/tiendas/tipos";
 import { BotonSeguir } from "./boton-seguir";
 
-export function TarjetaPuesto({ puesto, siguiendo, conSesion }: { puesto: PuestoResumen; siguiendo: boolean; conSesion: boolean }) {
+type Props = { puesto: PuestoResumen; siguiendo: boolean; conSesion: boolean; enVivo?: boolean };
+
+export function TarjetaPuesto({ puesto, siguiendo, conSesion, enVivo = false }: Props) {
   return (
     <article className="flex flex-col gap-2 rounded-2xl border p-3">
       <div className="flex items-center gap-3">
@@ -17,7 +20,10 @@ export function TarjetaPuesto({ puesto, siguiendo, conSesion }: { puesto: Puesto
             </div>
           )}
           <span className="min-w-0">
-            <span className="block truncate font-bold">{puesto.name}</span>
+            <span className="flex items-center gap-2">
+              <span className="truncate font-bold">{puesto.name}</span>
+              {enVivo && <EnVivo chico />}
+            </span>
             <span className="block truncate text-sm text-muted-foreground">{puesto.category} · {puesto.zone}</span>
           </span>
         </Link>

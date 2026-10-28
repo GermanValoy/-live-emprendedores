@@ -1,4 +1,8 @@
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
+
+// El módulo es solo de servidor (`import "server-only"`); fuera de Next esa marca tira error, así que acá se neutraliza.
+vi.mock("server-only", () => ({}));
+
 import { obtenerTransmisionDelPuesto } from "@/lib/vivos/transmision-puesto";
 import { borrarUsuarioPrueba, clienteAdmin, crearUsuarioPrueba, type UsuarioPrueba } from "../helpers/usuario-prueba";
 import { crearTiendaPrueba, crearTransmisionPrueba } from "../helpers/tiendas-prueba";

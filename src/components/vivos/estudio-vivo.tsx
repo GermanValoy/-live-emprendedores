@@ -157,8 +157,17 @@ function Estudio({ tienda, urlTransmitir, config, vivoAbierto, alSalirDeNuevo }:
     setFase("saliendo");
     setError(null);
     const dispositivo = (dispositivoRef.current ??= crypto.randomUUID());
-    const r = await salirEnVivo(dispositivo).catch(() => ({ ok: false as const, error: ERROR_RED }));
-    if (finRef.current || transmisorRef.current !== transmisor) return;
+    const r = await salirEnVivo(dispositivo).catch((e: unknown) => {
+      console.error("Salir en vivo: no respondió el servidor", e);
+      return { ok: false as const, error: ERROR_RED };
+    });
+    if (finRef.current || transmisorRef.current !== transmisor) {
+      // La pantalla se cerró mientras salía en vivo: si el vivo recién se abrió, se cierra (sin imagen no sirve).
+      if (r.ok && !vivoAbierto) {
+        void terminarVivo(r.vivo.id).catch((e: unknown) => console.error("Cerrar el vivo abandonado", e));
+      }
+      return;
+    }
     if (!r.ok) {
       setError(r.error);
       setFase("vista-previa");
@@ -167,6 +176,8 @@ function Estudio({ tienda, urlTransmitir, config, vivoAbierto, alSalirDeNuevo }:
     const v = r.vivo;
     setVivo(v);
     setAhora(Date.now());
+    // El cartel de "Saliste de la pantalla" es solo para cuando sale estando en vivo; el silencio sigue igual.
+    setAvisoSilenciada(false);
     setFase("en-vivo");
     void transmisor.salirEnVivo(urlTransmitir);
 
@@ -176,7 +187,8 @@ function Estudio({ tienda, urlTransmitir, config, vivoAbierto, alSalirDeNuevo }:
       else if (fila.device_id !== dispositivo) terminarCon({ tipo: "otro-celular" });
     };
     const releer = async () => {
-      const { data } = await supabase.from("live_sessions").select(CAMPOS_VIVO).eq("id", v.id).maybeSingle();
+      const { data, error: errorLectura } = await supabase.from("live_sessions").select(CAMPOS_VIVO).eq("id", v.id).maybeSingle();
+      if (errorLectura) throw errorLectura;
       if (data) alCambiarVivo(data as Vivo);
       return data as Vivo | null;
     };
@@ -191,7 +203,10 @@ function Estudio({ tienda, urlTransmitir, config, vivoAbierto, alSalirDeNuevo }:
         else if (resultado === "sin_sesion") terminarCon({ tipo: "sin-sesion" });
         else if (resultado === "terminado") {
           // Se lee la fila para saber por qué terminó; si no se puede, se muestra el resumen igual.
-          void releer().catch(() => null).then((fila) => {
+          void releer().catch((e: unknown) => {
+            console.error("Leer cómo terminó el vivo", e);
+            return null;
+          }).then((fila) => {
             if (!fila?.ended_at) terminarCon({ tipo: "cerrado", vivo: { ...v, ended_at: new Date().toISOString() } });
           });
         }
@@ -211,7 +226,7 @@ function Estudio({ tienda, urlTransmitir, config, vivoAbierto, alSalirDeNuevo }:
         (cambio) => alCambiarVivo(cambio.new as Vivo))
       .subscribe((estado) => {
         // Lo que cambió mientras el canal se conectaba no llega por el canal: se mira una vez.
-        if (estado === "SUBSCRIBED") void releer().catch(() => null);
+        if (estado === "SUBSCRIBED") void releer().catch((e: unknown) => console.error("Revisar el vivo al conectar el canal", e));
       });
     limpiezasRef.current = [senal.detener, dejarDeContar, () => void supabase.removeChannel(canal)];
   }
@@ -220,7 +235,10 @@ function Estudio({ tienda, urlTransmitir, config, vivoAbierto, alSalirDeNuevo }:
     if (!vivo || terminando) return;
     setTerminando(true);
     setError(null);
-    const r = await terminarVivo(vivo.id).catch(() => ({ ok: false as const, error: ERROR_RED }));
+    const r = await terminarVivo(vivo.id).catch((e: unknown) => {
+      console.error("Terminar el vivo: no respondió el servidor", e);
+      return { ok: false as const, error: ERROR_RED };
+    });
     setTerminando(false);
     if (r.ok) terminarCon({ tipo: "cerrado", vivo: r.vivo });
     else if (!finRef.current) {
@@ -267,13 +285,18 @@ function Estudio({ tienda, urlTransmitir, config, vivoAbierto, alSalirDeNuevo }:
             </>
           ) : (
             <>
-              <Link
-                href="/mi-puesto"
-                aria-label="Volver a mi puesto"
-                className="flex size-11 items-center justify-center rounded-full bg-black/55 text-xl backdrop-blur outline-none focus-visible:ring-3 focus-visible:ring-white/70"
-              >
-                <span aria-hidden="true">✕</span>
-              </Link>
+              {fase === "saliendo" ? (
+                // Mientras sale en vivo no se puede irse: quedaría un vivo abierto sin imagen.
+                <span className="size-11" aria-hidden="true" />
+              ) : (
+                <Link
+                  href="/mi-puesto"
+                  aria-label="Volver a mi puesto"
+                  className="flex size-11 items-center justify-center rounded-full bg-black/55 text-xl backdrop-blur outline-none focus-visible:ring-3 focus-visible:ring-white/70"
+                >
+                  <span aria-hidden="true">✕</span>
+                </Link>
+              )}
               <span className="mt-2 rounded-full bg-black/55 px-3 py-1.5 text-xs font-bold backdrop-blur">
                 {vivoAbierto ? "Vista previa · tu vivo sigue abierto" : "Vista previa · nadie te ve todavía"}
               </span>
@@ -378,6 +401,8 @@ function Estudio({ tienda, urlTransmitir, config, vivoAbierto, alSalirDeNuevo }:
             <button
               type="button"
               onClick={() => setConfirmando(false)}
+              // El foco arranca en la opción segura: un toque sin querer no corta el vivo.
+              autoFocus
               className="h-12 rounded-full bg-secondary text-base font-bold text-secondary-foreground outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
             >
               Seguir en vivo
@@ -444,6 +469,8 @@ function PermisoCamara({ alProbar }: { alProbar(): void }) {
 }
 
 function PantallaFin({ fin, alSalirDeNuevo }: { fin: Fin; alSalirDeNuevo(): void }) {
+  // La hora se toma una sola vez al mostrar el resumen (solo se usa si el vivo no trae su hora de cierre).
+  const [ahora] = useState(() => Date.now());
   const volver = (
     <Link
       href="/mi-puesto"
@@ -491,7 +518,7 @@ function PantallaFin({ fin, alSalirDeNuevo }: { fin: Fin; alSalirDeNuevo(): void
       <dl className="grid grid-cols-2 gap-3">
         <div className="flex flex-col gap-1 rounded-3xl bg-white/12 p-4">
           <dt className="text-sm text-white/80">Duró</dt>
-          <dd className="text-2xl leading-tight font-extrabold tabular-nums">{duracionEnPalabras(duracionVivoMs(vivo, Date.parse(vivo.started_at)))}</dd>
+          <dd className="text-2xl leading-tight font-extrabold tabular-nums">{duracionEnPalabras(duracionVivoMs(vivo, ahora))}</dd>
         </div>
         <div className="flex flex-col gap-1 rounded-3xl bg-white/12 p-4">
           <dt className="text-sm text-white/80">Más gente mirando a la vez</dt>

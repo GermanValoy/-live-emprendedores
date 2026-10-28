@@ -115,12 +115,28 @@ test("salir de la pantalla silencia", async ({ page, context }) => {
   await expect.poll(async () => (await vivosDe(tienda.id))[0]?.away_since, { timeout: 15_000 }).toBeNull();
 });
 
+test("salir de la vista previa silencia sin el cartel de vuelta", async ({ page, context }) => {
+  const { mica } = await nuevaMica();
+  await context.addCookies(await cookiesDeSesion(mica.sesion));
+  await page.goto("/mi-puesto/vivo");
+  await expect(page.getByRole("button", { name: "Salir en vivo" })).toBeEnabled({ timeout: 30_000 });
+  await cambiarVisibilidad(page, "hidden");
+  await cambiarVisibilidad(page, "visible");
+  await page.getByRole("button", { name: "Salir en vivo" }).click();
+  await expect(page.getByText("EN VIVO", { exact: true })).toBeVisible({ timeout: 30_000 });
+  await expect(page.getByText("🔇 Silenciada")).toBeVisible();
+  expect(await microfonoApagado(page)).toBe(true);
+  await expect(page.getByText("Estás silenciada")).toHaveCount(0);
+});
+
 test("terminar con confirmación", async ({ page, context }) => {
   const { mica, tienda } = await nuevaMica();
   await context.addCookies(await cookiesDeSesion(mica.sesion));
   await entrarYSalirEnVivo(page);
   await page.getByRole("button", { name: "Terminar" }).click();
   await expect(page.getByText("¿Seguro que querés terminar el vivo?")).toBeVisible();
+  // El foco va a la opción segura: un toque sin querer no corta el vivo.
+  await expect(page.getByRole("button", { name: "Seguir en vivo" })).toBeFocused();
   await page.getByRole("button", { name: "Sí, terminar" }).click();
   await expect(page.getByText("¡Terminó tu vivo! 🎉")).toBeVisible({ timeout: 30_000 });
   await expect(page.getByRole("link", { name: "Volver a mi puesto" })).toBeVisible();
@@ -180,7 +196,7 @@ test("cerrado por falta de señal ofrece salir de nuevo", async ({ page, context
   await expect.poll(async () => (await vivosDe(tienda.id)).filter((v) => v.ended_at === null).length).toBe(1);
 });
 
-test("avisar por WhatsApp",async ({ page, context }) => {
+test("avisar por WhatsApp", async ({ page, context }) => {
   const { mica, tienda } = await nuevaMica();
   await context.addCookies(await cookiesDeSesion(mica.sesion));
   await context.route("https://wa.me/**", (r) => r.fulfill({ body: "ok" }));

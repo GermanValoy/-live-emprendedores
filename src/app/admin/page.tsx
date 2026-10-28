@@ -5,6 +5,8 @@ import { Suspense } from "react";
 import { obtenerUsuarioId } from "@/lib/auth/sesion";
 import { formatFechaTucuman } from "@/lib/format/fecha";
 import { createClient } from "@/lib/supabase/server";
+import { listarVivosAbiertos } from "@/lib/vivos/datos";
+import { PanelVivos } from "./panel-vivos";
 import { type FilaInvitacion, PanelInvitaciones } from "./panel-invitaciones";
 
 export const metadata: Metadata = { title: "Administración · Tu Feria Live", robots: { index: false, follow: false } };
@@ -29,6 +31,15 @@ async function ContenidoAdmin() {
   const { data: esAdmin } = await supabase.rpc("es_admin");
   if (esAdmin !== true) notFound();
 
+  const vivosAbiertos = await listarVivosAbiertos(supabase);
+  const vivos = vivosAbiertos.map(({ vivo, puesto }) => ({
+    id: vivo.id,
+    handle: puesto.handle,
+    name: puesto.name,
+    desde: formatFechaTucuman(vivo.started_at),
+    viewers: vivo.viewers,
+  }));
+
   const { data } = await supabase
     .from("invitations")
     .select("id, note, created_at, expires_at, used_at, revoked_at, used_by")
@@ -51,6 +62,7 @@ async function ContenidoAdmin() {
 
   return (
     <>
+      <PanelVivos vivos={vivos} />
       <h1 className="text-2xl font-extrabold">Invitaciones</h1>
       <PanelInvitaciones filas={filas} />
     </>

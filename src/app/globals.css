@@ -252,6 +252,7 @@
   font-size: 0.85rem;
   line-height: 1.4;
   color: var(--espera-suave);
+  overflow-wrap: anywhere;
   z-index: 5;
 }
 @media (prefers-reduced-motion: reduce) {

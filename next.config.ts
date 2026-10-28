@@ -12,6 +12,7 @@ const nextConfig: NextConfig = {
     return [
       { source: "/@:handle", destination: "/tienda/:handle" },
       { source: "/@:handle/p/:id", destination: "/tienda/:handle/p/:id" },
+      { source: "/@:handle/vivo", destination: "/tienda/:handle/vivo" },
     ];
   },
   turbopack: {

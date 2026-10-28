@@ -221,15 +221,21 @@ function Estudio({ tienda, urlTransmitir, config, vivoAbierto, alSalirDeNuevo }:
       setMirando(n);
     });
     // Si otro celular toma el vivo o la plataforma lo corta, esta pantalla se entera por acá.
+    // Nombre único y wait (igual que en la sala): el SUBSCRIBED llega recién cuando la base ya escucha los cambios.
+    let cerrando = false;
     const canal = supabase
-      .channel(`estudio:${v.id}`)
+      .channel(`estudio:${v.id}:${crypto.randomUUID()}`, { config: { postgres_changes_options: { wait: true } } })
       .on("postgres_changes", { event: "UPDATE", schema: "public", table: "live_sessions", filter: `id=eq.${v.id}` },
         (cambio) => alCambiarVivo(cambio.new as Vivo))
-      .subscribe((estado) => {
+      .subscribe((estado, errorCanal) => {
         // Lo que cambió mientras el canal se conectaba no llega por el canal: se mira una vez.
         if (estado === "SUBSCRIBED") void releer().catch((e: unknown) => console.error("Revisar el vivo al conectar el canal", e));
+        else if (estado === "CHANNEL_ERROR") console.error("Estudio: falló el canal del vivo", errorCanal);
+        else if (estado === "TIMED_OUT") console.error("Estudio: el canal del vivo no respondió a tiempo");
+        else if (estado === "CLOSED" && !cerrando) console.error("Estudio: se cerró el canal del vivo");
       });
-    limpiezasRef.current = [senal.detener, dejarDeContar, () => void supabase.removeChannel(canal)];
+    const cerrarCanal = () => { cerrando = true; void supabase.removeChannel(canal); };
+    limpiezasRef.current = [senal.detener, dejarDeContar, cerrarCanal];
   }
 
   async function terminar() {

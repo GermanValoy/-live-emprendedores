@@ -3,7 +3,7 @@
  * o si la imagen queda congelada unos segundos (pasa cuando la feriante se reconectó).
  */
 import { leerMuestra } from "./estadisticas";
-import { esperaReconexion } from "./registro";
+import { esperaReconexion } from "./reconexion";
 import { type ConexionVivo, mirar } from "./webrtc";
 
 export type EstadoReproduccion = "conectando" | "reproduciendo" | "reconectando";

@@ -8,7 +8,7 @@
  */
 import { toast } from "sonner";
 import { silenciarAudio } from "./privacidad";
-import { esperaReconexion } from "./registro";
+import { esperaReconexion } from "./reconexion";
 import { type ConexionVivo, transmitir } from "./webrtc";
 
 export type EstadoTransmision =

@@ -18,12 +18,23 @@ test("el inicio no tiene desplazamiento horizontal en el celular", async ({ page
 
 const SIN_VIVOS = "Ahora no hay nadie en vivo. Seguí a tus puestos favoritos.";
 
-test("sin vivos", async ({ page }) => {
+async function hayVivosAbiertos(): Promise<boolean> {
   const { data, error } = await clienteAdmin().from("live_sessions").select("id").is("ended_at", null);
   if (error) throw error;
-  test.skip((data ?? []).length > 0, "La base compartida tiene vivos abiertos de otras pruebas.");
+  return (data ?? []).length > 0;
+}
+
+test("sin vivos", async ({ page }) => {
+  // La base se comparte con las pruebas que abren vivos en paralelo: si hay uno abierto, no hay nada que comprobar.
+  test.skip(await hayVivosAbiertos(), "La base compartida tiene vivos abiertos de otras pruebas.");
   await page.goto("/");
-  await expect(page.getByText(SIN_VIVOS)).toBeVisible();
+  try {
+    await expect(page.getByText(SIN_VIVOS)).toBeVisible({ timeout: 10_000 });
+  } catch (e) {
+    // Otra prueba pudo abrir un vivo entre la lectura y la pantalla: ahí tampoco corresponde el texto.
+    test.skip(await hayVivosAbiertos(), "Otra prueba abrió un vivo mientras se cargaba el Inicio.");
+    throw e;
+  }
 });
 
 test.describe("con un vivo", () => {

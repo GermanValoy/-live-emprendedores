@@ -16,7 +16,10 @@ export function TarjetaVivo({ item }: { item: VivoEnPortada }) {
       <span aria-hidden="true" className="absolute inset-0 bg-gradient-to-t from-black/75 via-transparent to-black/30" />
       <span className="absolute inset-x-2 top-2 flex items-center justify-between gap-1">
         <EnVivo />
-        <span className="rounded-full bg-black/60 px-2 py-1 text-xs font-bold tabular-nums">👁 {vivo.viewers}</span>
+        <span className="rounded-full bg-black/60 px-2 py-1 text-xs font-bold tabular-nums">
+          <span aria-hidden="true">👁 {vivo.viewers}</span>
+          <span className="sr-only">{vivo.viewers} mirando</span>
+        </span>
       </span>
       <span className="absolute inset-x-2 bottom-2 min-w-0">
         <span className="line-clamp-2 break-words text-sm font-extrabold leading-tight">{puesto.name}</span>

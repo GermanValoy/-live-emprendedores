@@ -78,7 +78,9 @@ export function useSalaVivo(storeId: string, vivoInicial: Vivo | null, config: C
     let cerrando = false;
     const filtro = { schema: "public", table: "live_sessions", filter: `store_id=eq.${storeId}` } as const;
     const canal = supabase
-      .channel(`sala:${storeId}`)
+      // Nombre único: si se vuelve a montar enseguida, no se reutiliza un canal que todavía se está cerrando.
+      // wait: la base confirma el SUBSCRIBED recién cuando ya escucha los cambios (sin huecos entre la conexión y la escucha).
+      .channel(`sala:${storeId}:${crypto.randomUUID()}`, { config: { postgres_changes_options: { wait: true } } })
       .on("postgres_changes", { event: "INSERT", ...filtro }, (cambio) => recibir(cambio.new as Vivo, true))
       .on("postgres_changes", { event: "UPDATE", ...filtro }, (cambio) => recibir(cambio.new as Vivo, false))
       .subscribe((estadoCanal, error) => {

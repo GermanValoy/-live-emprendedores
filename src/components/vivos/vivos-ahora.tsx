@@ -27,6 +27,10 @@ export function VivosAhora({ iniciales }: { iniciales: VivoEnPortada[] }) {
     setMirando({});
   }
   const espera = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const idsRef = useRef(new Set<string>());
+  useEffect(() => {
+    idsRef.current = new Set(iniciales.map((i) => i.vivo.id));
+  }, [iniciales]);
 
   useEffect(() => {
     const recargar = () => {
@@ -36,11 +40,14 @@ export function VivosAhora({ iniciales }: { iniciales: VivoEnPortada[] }) {
     let cerrando = false;
     const filtro = { schema: "public", table: "live_sessions" } as const;
     const canal = supabase
-      .channel("portada:vivos")
+      // Nombre único: si se vuelve a montar enseguida, no se reutiliza un canal que todavía se está cerrando.
+      // wait: la base confirma el SUBSCRIBED recién cuando ya escucha los cambios (sin huecos entre la conexión y la escucha).
+      .channel(`portada:vivos:${crypto.randomUUID()}`, { config: { postgres_changes_options: { wait: true } } })
       .on("postgres_changes", { event: "INSERT", ...filtro }, recargar)
       .on("postgres_changes", { event: "UPDATE", ...filtro }, (cambio) => {
         const fila = cambio.new as FilaVivo;
         if (fila.ended_at) recargar();
+        else if (!idsRef.current.has(fila.id)) recargar(); // un vivo que no conocíamos (se perdió su arranque)
         else setMirando((m) => ({ ...m, [fila.id]: fila.viewers }));
       })
       .subscribe((estadoCanal, error) => {

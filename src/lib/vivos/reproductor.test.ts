@@ -43,6 +43,30 @@ describe("crearReproductor: pausa de la reconexión", () => {
     expect(vi.mocked(mirar).mock.calls.length).toBeGreaterThan(1);
     r.cerrar();
   });
+
+  it("al reanudar con la imagen en movimiento vuelve a 'reproduciendo' aunque se congeló antes de la pausa", async () => {
+    let cuadros = 42;
+    vi.mocked(mirar).mockImplementation(async () => {
+      const c = conexionCongelada();
+      (c.pc.getStats as ReturnType<typeof vi.fn>).mockImplementation(
+        async () => new Map([["v", { type: "inbound-rtp", kind: "video", framesDecoded: cuadros }]]),
+      );
+      return c;
+    });
+    const estado = vi.fn();
+    const r = crearReproductor("https://ejemplo.invalid/whep", video(), { estado, sinSonido: vi.fn() });
+    await vi.advanceTimersByTimeAsync(3_000); // la imagen se congela un par de segundos
+    expect(estado).toHaveBeenLastCalledWith("reconectando");
+    r.pausarReconexion(true); // recién ahí llega que la feriante salió
+    await vi.advanceTimersByTimeAsync(5_000);
+    r.pausarReconexion(false);
+    const avanzar = setInterval(() => (cuadros += 30), 500);
+    await vi.advanceTimersByTimeAsync(3_000);
+    clearInterval(avanzar);
+    expect(estado).toHaveBeenLastCalledWith("reproduciendo");
+    expect(mirar).toHaveBeenCalledTimes(1);
+    r.cerrar();
+  });
 });
 
 function videoFalso(play: () => Promise<void>) {

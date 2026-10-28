@@ -52,7 +52,14 @@ export function crearReproductor(
   let avisoSinSonido = false;
   let enPausa = false;
 
-  const cambiarEstado = (e: EstadoReproduccion) => { if (activo) al.estado(e); };
+  // El último estado avisado: si quedó "reconectando" (por ejemplo, la imagen se congeló justo antes de una
+  // pausa), basta con que la imagen vuelva a moverse para avisar "reproduciendo".
+  let estadoAvisado: EstadoReproduccion | null = null;
+  const cambiarEstado = (e: EstadoReproduccion) => {
+    if (!activo) return;
+    estadoAvisado = e;
+    al.estado(e);
+  };
 
   const ponerVideo = (stream: MediaStream) => {
     video.srcObject = stream;
@@ -128,7 +135,7 @@ export function crearReproductor(
     if (ultimosCuadros !== null && cuadros === ultimosCuadros) {
       cambiarEstado("reconectando");
       if (++segundosCongelado >= SEGUNDOS_CONGELADO_PARA_RECONECTAR) void reconectar();
-    } else if (ultimosCuadros !== null && segundosCongelado > 0) {
+    } else if (ultimosCuadros !== null && (segundosCongelado > 0 || estadoAvisado === "reconectando")) {
       segundosCongelado = 0;
       cambiarEstado("reproduciendo");
     }

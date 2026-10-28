@@ -4,6 +4,8 @@ import { supabaseEnv } from "./env";
 
 const RUTAS_PROTEGIDAS = ["/cuenta", "/mi-puesto"];
 
+const RUTA_SENAL = "/mi-puesto/vivo/senal";
+
 function esProtegida(ruta: string) {
   return RUTAS_PROTEGIDAS.some((r) => ruta === r || ruta.startsWith(`${r}/`));
 }
@@ -38,6 +40,11 @@ export async function updateSession(request: NextRequest) {
     conSesion = !!data?.claims;
   } catch {
     conSesion = false; // cookie vencida o corrupta: se trata como sin sesión
+  }
+
+  if (!conSesion && request.nextUrl.pathname === RUTA_SENAL) {
+    // La señal de vida la llama el navegador con fetch: necesita un 401 en JSON, no una redirección a una página.
+    return NextResponse.json({ error: "sin_sesion" }, { status: 401 });
   }
 
   if (!conSesion && esProtegida(request.nextUrl.pathname)) {

@@ -19,10 +19,14 @@ export async function obtenerTransmisionDelPuesto(
   if (data) return { uid: data.cloudflare_uid, urlTransmitir: data.whip_url, urlMirar: data.whep_url };
 
   const urls = await obtenerOCrearTransmision(`puesto-${storeId}`, cred, f);
+  // Si otro pedido ganó la carrera, su fila queda y la nuestra se descarta.
   const guardado = await db.from("store_streams").upsert(
     { store_id: storeId, cloudflare_uid: urls.uid, whip_url: urls.urlTransmitir, whep_url: urls.urlMirar },
-    { onConflict: "store_id" },
+    { onConflict: "store_id", ignoreDuplicates: true },
   );
   if (guardado.error) throw guardado.error;
-  return urls;
+  // Todos devuelven la fila guardada, así la URL que ve la dueña es siempre la misma.
+  const final = await db.from("store_streams").select("cloudflare_uid, whip_url, whep_url").eq("store_id", storeId).single();
+  if (final.error) throw final.error;
+  return { uid: final.data.cloudflare_uid, urlTransmitir: final.data.whip_url, urlMirar: final.data.whep_url };
 }

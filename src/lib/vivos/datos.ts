@@ -11,12 +11,13 @@ export async function obtenerConfigVivo(supabase: SupabaseClient): Promise<Confi
 }
 
 export async function vivoAbiertoDe(supabase: SupabaseClient, storeId: string): Promise<Vivo | null> {
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from("live_sessions")
     .select(CAMPOS_VIVO)
     .eq("store_id", storeId)
     .is("ended_at", null)
     .maybeSingle();
+  if (error) throw error;
   return (data as Vivo | null) ?? null;
 }
 
@@ -29,11 +30,12 @@ type FilaPortada = Vivo & { stores: VivoEnPortada["puesto"] | VivoEnPortada["pue
 
 /** Vivos abiertos, el que más gente tiene primero. */
 export async function listarVivosAbiertos(supabase: SupabaseClient): Promise<VivoEnPortada[]> {
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from("live_sessions")
     .select(`${CAMPOS_VIVO}, stores(id, handle, name, zone, avatar_path, cover_path)`)
     .is("ended_at", null)
     .order("viewers", { ascending: false });
+  if (error) throw error;
   const filas = (data as FilaPortada[] | null) ?? [];
   return filas.flatMap(({ stores, ...vivo }) => {
     const puesto = Array.isArray(stores) ? stores[0] : stores;
@@ -42,6 +44,7 @@ export async function listarVivosAbiertos(supabase: SupabaseClient): Promise<Viv
 }
 
 export async function idsPuestosEnVivo(supabase: SupabaseClient): Promise<Set<string>> {
-  const { data } = await supabase.from("live_sessions").select("store_id").is("ended_at", null);
+  const { data, error } = await supabase.from("live_sessions").select("store_id").is("ended_at", null);
+  if (error) throw error;
   return new Set(((data as { store_id: string }[] | null) ?? []).map((f) => f.store_id));
 }

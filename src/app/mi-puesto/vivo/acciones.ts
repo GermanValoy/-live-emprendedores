@@ -26,8 +26,19 @@ function mensajeDeError(e: { message?: string } | null | undefined): string {
 }
 
 async function leerVivo(supabase: Awaited<ReturnType<typeof createClient>>, id: string): Promise<Vivo | null> {
-  const { data } = await supabase.from("live_sessions").select(CAMPOS_VIVO).eq("id", id).maybeSingle();
+  const { data, error } = await supabase.from("live_sessions").select(CAMPOS_VIVO).eq("id", id).maybeSingle();
+  if (error) throw error;
   return (data as Vivo | null) ?? null;
+}
+
+async function leerVivoOError(supabase: Awaited<ReturnType<typeof createClient>>, id: string): Promise<ResultadoVivo> {
+  try {
+    const vivo = await leerVivo(supabase, id);
+    return vivo ? { ok: true, vivo } : { ok: false, error: ERROR_GENERICO };
+  } catch (e) {
+    console.error("leer vivo", e);
+    return { ok: false, error: ERROR_GENERICO };
+  }
 }
 
 export async function salirEnVivo(dispositivo: string): Promise<ResultadoVivo> {
@@ -42,14 +53,14 @@ export async function salirEnVivo(dispositivo: string): Promise<ResultadoVivo> {
     // Garantiza que la transmisión del puesto exista y esté guardada: la base lee de ahí la URL para mirar.
     await obtenerTransmisionDelPuesto(tienda.id, { db: createAdminClient(), cred: credencialesCloudflare() });
   } catch (e) {
-    if (!(e instanceof ErrorCloudflare)) console.error("salirEnVivo: transmisión", e);
+    // Solo el mensaje: ErrorCloudflare nunca incluye la llave ni las URLs.
+    console.error("salirEnVivo: transmisión", e instanceof ErrorCloudflare ? e.message : e);
     return { ok: false, error: ERROR_TRANSMISION };
   }
 
   const { data, error } = await supabase.rpc("abrir_vivo", { p_store: tienda.id, p_device: dispositivo });
   if (error || typeof data !== "string") return { ok: false, error: mensajeDeError(error) };
-  const vivo = await leerVivo(supabase, data);
-  return vivo ? { ok: true, vivo } : { ok: false, error: ERROR_GENERICO };
+  return leerVivoOError(supabase, data);
 }
 
 export async function terminarVivo(vivoId: string): Promise<ResultadoVivo> {
@@ -57,6 +68,5 @@ export async function terminarVivo(vivoId: string): Promise<ResultadoVivo> {
   const supabase = await createClient();
   const { error } = await supabase.rpc("terminar_vivo", { p_vivo: vivoId });
   if (error) return { ok: false, error: mensajeDeError(error) };
-  const vivo = await leerVivo(supabase, vivoId);
-  return vivo ? { ok: true, vivo } : { ok: false, error: ERROR_GENERICO };
+  return leerVivoOError(supabase, vivoId);
 }

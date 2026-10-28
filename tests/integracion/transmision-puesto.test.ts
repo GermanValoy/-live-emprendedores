@@ -69,4 +69,26 @@ describe("obtenerTransmisionDelPuesto", () => {
       await borrarUsuarioPrueba(otra.id);
     }
   });
+
+  it("si otro pedido ya guardó la transmisión, devuelve la guardada y no la propia", async () => {
+    const otra = await crearUsuarioPrueba({ nombre: "Carrera Transmision" });
+    try {
+      const t = await crearTiendaPrueba(otra);
+      const detalle = { uid: "perdedora", webRTC: { url: "https://p/whip" }, webRTCPlayback: { url: "https://p/whep" } };
+      const base = fetchFalso({ [`GET ${BASE}`]: [], [`POST ${BASE}`]: detalle });
+      // Simula al ganador: guarda su fila justo cuando el perdedor termina de crear la suya en Cloudflare.
+      const f = (async (url: string, init?: RequestInit) => {
+        const r = await base.f(url, init);
+        if (init?.method === "POST") await crearTransmisionPrueba(t.id);
+        return r;
+      }) as typeof fetch;
+      await expect(obtenerTransmisionDelPuesto(t.id, { db, cred: CRED, f })).resolves.toEqual({
+        uid: `prueba-${t.id}`,
+        urlTransmitir: "https://cloudflare.invalid/whip",
+        urlMirar: "https://cloudflare.invalid/whep",
+      });
+    } finally {
+      await borrarUsuarioPrueba(otra.id);
+    }
+  });
 });

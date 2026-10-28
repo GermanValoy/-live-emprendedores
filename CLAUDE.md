@@ -156,7 +156,11 @@ Programar los pagos como un **módulo intercambiable** (`lib/payments/` con una 
 - La base no controla el formato de las rutas de fotos ni impide saltar pasos del recorrido manipulando el navegador.
 - Si se pierde la respuesta al abrir el puesto, el reintento dice "Esta invitación ya se usó." aunque la tienda se creó.
 - Vista previa con foto al compartir el link de una tienda por WhatsApp.
-- Antes del piloto: proyecto de Supabase separado para producción y plan pago (para que no se pause).
+- Antes del piloto: proyecto de Supabase separado para producción y plan pago (para que no se pause). Hoy las pruebas automáticas escriben en la misma base que usa la página publicada: mientras corren, pueden aparecer vivos de prueba en "En vivo ahora". Separarlo antes de invitar a las feriantes.
+- Si la feriante cierra la página, el vivo queda como "vuelve en un momento" hasta 15 minutos (en vez de 5): el celular no distingue bien entre cerrar y salir un rato.
+- Si la transmisión no llega a Cloudflare (por ejemplo, Cloudflare caído), el vivo figura "EN VIVO" con la imagen en negro mientras su página esté abierta: mandar en la señal si realmente está transmitiendo.
+- La tabla de vivos muestra públicamente qué cuenta de administración cortó un vivo (`ended_by`, un identificador sin nombre) y el `device_id`: ocultar esas columnas.
+- Limitar la cantidad de señales por persona en `/mi-puesto/vivo/senal` (junto con el límite del chat, Parte 3).
 - La portada y la sala reciben cada cambio de todos los vivos (optimizar cuando haya muchos).
 - Si la compradora entra a un vivo que ya perdió la señal, el aviso "se está reconectando" tarda hasta 40 s en aparecer.
 - Borrar la transmisión `prueba-vivo` en Cloudflare (la borra el dueño a mano; sacar esta línea cuando esté hecho).

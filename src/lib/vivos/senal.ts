@@ -5,11 +5,13 @@
  */
 
 export type DatosSenal = { fuera: boolean; silenciada: boolean; mirando: number };
-/** `sin_sesion`: se le venció la sesión (hay que volver a entrar). */
+/** `sin_sesion`: se le venció la sesión (varios 401 seguidos aun después de renovarla: hay que volver a entrar). */
 export type ResultadoSenal = "ok" | "otro_dispositivo" | "terminado" | "sin_sesion";
 
 const RUTA = "/mi-puesto/vivo/senal";
 const RESULTADOS: readonly string[] = ["ok", "otro_dispositivo", "terminado"];
+/** Un 401 suelto puede ser un tropiezo al renovar la sesión: recién después de tantos seguidos se da por vencida. */
+const MAX_401_SEGUIDOS = 3;
 
 export function crearSenal(op: {
   vivoId: string;
@@ -17,10 +19,13 @@ export function crearSenal(op: {
   cadaSegundos: number;
   leer(): DatosSenal;
   alResultado(r: ResultadoSenal): void;
+  /** Intenta renovar la sesión del navegador (después de un 401). */
+  renovarSesion(): Promise<unknown>;
   f?: typeof fetch;
 }): { avisarAhora(): void; detener(): void } {
   const f = op.f ?? ((...args: Parameters<typeof fetch>) => fetch(...args));
   let activa = true;
+  let seguidos401 = 0;
 
   const detener = () => {
     activa = false;
@@ -29,7 +34,13 @@ export function crearSenal(op: {
 
   /** Lee la respuesta; `null` si fue un error pasajero y hay que seguir intentando. */
   async function interpretar(respuesta: Response): Promise<ResultadoSenal | null> {
-    if (respuesta.status === 401) return "sin_sesion";
+    if (respuesta.status === 401) {
+      if (++seguidos401 >= MAX_401_SEGUIDOS) return "sin_sesion";
+      // Puede ser pasajero (se cortó la red justo al renovar la sesión): se renueva y se sigue mandando.
+      void op.renovarSesion().catch(() => {});
+      return null;
+    }
+    seguidos401 = 0;
     // Ya no puede mandar señales de este vivo: para ella, terminó.
     if (respuesta.status === 403) return "terminado";
     if (!respuesta.ok) return null;

@@ -30,8 +30,11 @@ afterEach(() => vi.useRealTimers());
 function armar(respuestas: () => Respuesta) {
   const { f, llamadas } = fetchFalso(respuestas);
   const alResultado = vi.fn();
-  const senal = crearSenal({ vivoId: VIVO, dispositivo: DISPOSITIVO, cadaSegundos: 20, leer: () => datos, alResultado, f });
-  return { senal, llamadas, alResultado };
+  const renovarSesion = vi.fn(async () => {});
+  const senal = crearSenal({
+    vivoId: VIVO, dispositivo: DISPOSITIVO, cadaSegundos: 20, leer: () => datos, alResultado, f, renovarSesion,
+  });
+  return { senal, llamadas, alResultado, renovarSesion };
 }
 
 describe("crearSenal", () => {
@@ -81,12 +84,55 @@ describe("crearSenal", () => {
     expect(llamadas).toHaveLength(1);
   });
 
-  it("si se venció la sesión, avisa sin_sesion y deja de mandar", async () => {
-    const { llamadas, alResultado } = armar(() => json({ error: "sin_sesion" }, 401));
+  it("uno o dos 401 seguidos no cortan: renueva la sesión y sigue mandando", async () => {
+    let n = 0;
+    const { senal, llamadas, alResultado, renovarSesion } = armar(() =>
+      ++n <= 2 ? json({ error: "sin_sesion" }, 401) : json({ resultado: "ok" }),
+    );
+    await vi.advanceTimersByTimeAsync(40_000);
+    expect(llamadas).toHaveLength(2);
+    expect(renovarSesion).toHaveBeenCalledTimes(2);
+    expect(alResultado).not.toHaveBeenCalled();
     await vi.advanceTimersByTimeAsync(20_000);
+    expect(alResultado).toHaveBeenCalledWith("ok");
+    expect(alResultado).not.toHaveBeenCalledWith("sin_sesion");
+    senal.detener();
+  });
+
+  it("si la sesión se venció de verdad (tres 401 seguidos), avisa sin_sesion y deja de mandar", async () => {
+    const { llamadas, alResultado } = armar(() => json({ error: "sin_sesion" }, 401));
+    await vi.advanceTimersByTimeAsync(60_000);
+    expect(alResultado).toHaveBeenCalledTimes(1);
     expect(alResultado).toHaveBeenCalledWith("sin_sesion");
     await vi.advanceTimersByTimeAsync(100_000);
-    expect(llamadas).toHaveLength(1);
+    expect(llamadas).toHaveLength(3);
+  });
+
+  it("una respuesta que no es 401 en el medio vuelve a contar desde cero", async () => {
+    let n = 0;
+    // 401, 401, error del servidor, 401, 401, ok
+    const { senal, llamadas, alResultado } = armar(() =>
+      [1, 2, 4, 5].includes(++n) ? json({ error: "sin_sesion" }, 401) : n === 3 ? json({ error: "error" }, 500) : json({ resultado: "ok" }),
+    );
+    await vi.advanceTimersByTimeAsync(120_000);
+    expect(llamadas).toHaveLength(6);
+    expect(alResultado).not.toHaveBeenCalledWith("sin_sesion");
+    expect(alResultado).toHaveBeenCalledWith("ok");
+    senal.detener();
+  });
+
+  it("si renovar la sesión falla, igual sigue mandando", async () => {
+    let n = 0;
+    const { f, llamadas } = fetchFalso(() => (++n === 1 ? json({ error: "sin_sesion" }, 401) : json({ resultado: "ok" })));
+    const alResultado = vi.fn();
+    const senal = crearSenal({
+      vivoId: VIVO, dispositivo: DISPOSITIVO, cadaSegundos: 20, leer: () => datos, alResultado, f,
+      renovarSesion: async () => { throw new Error("sin red"); },
+    });
+    await vi.advanceTimersByTimeAsync(40_000);
+    expect(llamadas).toHaveLength(2);
+    expect(alResultado).toHaveBeenCalledWith("ok");
+    senal.detener();
   });
 
   it("si ya no tiene permiso sobre el vivo, lo da por terminado", async () => {

@@ -12,6 +12,8 @@ function esProtegida(ruta: string) {
 
 /** Renueva la sesión en cada pedido y saca al inicio a quien entra sin sesión a una ruta protegida. */
 export async function updateSession(request: NextRequest) {
+  // Se mira antes de que Supabase toque las cookies (las de sesión empiezan con "sb-").
+  const traiaCookiesDeSesion = request.cookies.getAll().some((c) => c.name.startsWith("sb-"));
   let supabaseResponse = NextResponse.next({ request });
   let encabezadosDeSesion: Record<string, string> = {};
   const { url, publishableKey } = supabaseEnv();
@@ -42,9 +44,15 @@ export async function updateSession(request: NextRequest) {
     conSesion = false; // cookie vencida o corrupta: se trata como sin sesión
   }
 
-  if (!conSesion && request.nextUrl.pathname === RUTA_SENAL) {
-    // La señal de vida la llama el navegador con fetch: necesita un 401 en JSON, no una redirección a una página.
-    return NextResponse.json({ error: "sin_sesion" }, { status: 401 });
+  if (request.nextUrl.pathname === RUTA_SENAL) {
+    // La señal de vida la llama el navegador con fetch: nunca se redirige a una página.
+    // Si trae cookies de sesión (aunque no se hayan podido renovar acá, por ejemplo por un corte de red),
+    // decide la ruta: un 401 apresurado le cortaría el vivo a la feriante.
+    if (conSesion || traiaCookiesDeSesion) return supabaseResponse;
+    const respuesta = NextResponse.json({ error: "sin_sesion" }, { status: 401 });
+    supabaseResponse.cookies.getAll().forEach((cookie) => respuesta.cookies.set(cookie));
+    Object.entries(encabezadosDeSesion).forEach(([clave, valor]) => respuesta.headers.set(clave, valor));
+    return respuesta;
   }
 
   if (!conSesion && esProtegida(request.nextUrl.pathname)) {

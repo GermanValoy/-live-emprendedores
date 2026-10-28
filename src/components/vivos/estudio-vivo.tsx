@@ -198,6 +198,7 @@ function Estudio({ tienda, urlTransmitir, config, vivoAbierto, alSalirDeNuevo }:
       dispositivo,
       cadaSegundos: config.senal_cada_segundos,
       leer: () => ({ fuera: fueraRef.current, silenciada: silenciadaRef.current, mirando: mirandoRef.current }),
+      renovarSesion: () => supabase.auth.refreshSession(),
       alResultado: (resultado) => {
         if (resultado === "otro_dispositivo") terminarCon({ tipo: "otro-celular" });
         else if (resultado === "sin_sesion") terminarCon({ tipo: "sin-sesion" });

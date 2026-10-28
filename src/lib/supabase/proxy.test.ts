@@ -5,13 +5,20 @@ vi.mock("./env", () => ({ supabaseEnv: () => ({ url: "https://ejemplo.invalid", 
 
 import { updateSession } from "./proxy";
 
-const pedido = (ruta: string, method = "GET") => new NextRequest(`http://localhost:3000${ruta}`, { method });
+const pedido = (ruta: string, method = "GET", cookie?: string) =>
+  new NextRequest(`http://localhost:3000${ruta}`, { method, headers: cookie ? { cookie } : undefined });
 
 describe("updateSession sin sesión", () => {
-  it("responde 401 en JSON a la señal del vivo", async () => {
-    const r = await updateSession(pedido("/mi-puesto/vivo/senal", "POST"));
+  it("responde 401 en JSON a la señal del vivo si no hay ninguna cookie de sesión", async () => {
+    const r = await updateSession(pedido("/mi-puesto/vivo/senal", "POST", "otra=cosa"));
     expect(r.status).toBe(401);
     expect(await r.json()).toEqual({ error: "sin_sesion" });
+  });
+
+  it("con cookies de sesión que no sirven, deja que la señal llegue a la ruta (ella decide)", async () => {
+    const r = await updateSession(pedido("/mi-puesto/vivo/senal", "POST", "sb-ejemplo-auth-token=basura"));
+    expect(r.status).toBe(200);
+    expect(r.headers.get("x-middleware-next")).toBe("1");
   });
 
   it("sigue redirigiendo al inicio las demás rutas de /mi-puesto", async () => {

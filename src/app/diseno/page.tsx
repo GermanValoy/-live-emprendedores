@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { EnVivo } from "@/components/marca/en-vivo";
 import { EtiquetaCodigo } from "@/components/marca/etiqueta-codigo";
+import { EsperaFeria } from "@/components/vivos/espera-feria";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -52,6 +53,13 @@ export default function DisenoPage() {
         <div className="flex flex-wrap items-center gap-3">
           <EnVivo />
           <EtiquetaCodigo codigo="rojo" centavos={800000} />
+        </div>
+      </section>
+
+      <section className="flex flex-col gap-3">
+        <h2 className="text-xl font-bold">Espera del vivo</h2>
+        <div className="overflow-hidden rounded-2xl border">
+          <EsperaFeria nombre="Mica" />
         </div>
       </section>
 

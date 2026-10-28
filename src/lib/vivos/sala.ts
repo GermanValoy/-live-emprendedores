@@ -17,3 +17,12 @@ export function duracionVivoMs(vivo: Vivo, ahora: number): number {
   const fin = vivo.ended_at ? Date.parse(vivo.ended_at) : ahora;
   return fin - Date.parse(vivo.started_at);
 }
+
+/**
+ * Cuánto difiere el reloj del celular del de la base, medido al recibir una señal nueva de la feriante
+ * (`ahoraLocal` es Date.now() al recibirla). Incluye la demora de la red, que es chica frente a los 40 s
+ * de margen. La hora "de la base" para `estadoSala` es `Date.now() - desfase`.
+ */
+export function desfaseReloj(ultimaSenalIso: string, ahoraLocal: number): number {
+  return ahoraLocal - Date.parse(ultimaSenalIso);
+}

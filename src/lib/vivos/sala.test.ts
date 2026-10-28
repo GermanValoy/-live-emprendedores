@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { duracionVivoMs, estadoSala } from "./sala";
+import { desfaseReloj, duracionVivoMs, estadoSala } from "./sala";
 import type { ConfigVivo, Vivo } from "./tipos";
 
 const CONFIG: ConfigVivo = { sin_conexion_segundos: 300, fuera_segundos: 900, senal_cada_segundos: 20 };
@@ -64,5 +64,22 @@ describe("duracionVivoMs", () => {
       end_reason: "duena",
     });
     expect(duracionVivoMs(vivo, AHORA)).toBe(480_000);
+  });
+});
+
+describe("desfaseReloj", () => {
+  const vivo = vivoBase({ last_signal_at: new Date(AHORA).toISOString() });
+
+  it("con el reloj del celular adelantado no muestra 'se está reconectando' de más", () => {
+    const llegada = AHORA + 60_000; // el celular va 1 minuto adelantado
+    const desfase = desfaseReloj(vivo.last_signal_at, llegada);
+    expect(desfase).toBe(60_000);
+    expect(estadoSala(vivo, llegada + 10_000 - desfase, CONFIG)).toBe("en-vivo");
+  });
+
+  it("con el reloj atrasado igual detecta cuando se corta la señal", () => {
+    const llegada = AHORA - 60_000; // el celular va 1 minuto atrasado
+    const desfase = desfaseReloj(vivo.last_signal_at, llegada);
+    expect(estadoSala(vivo, llegada + 45_000 - desfase, CONFIG)).toBe("reconectando-feriante");
   });
 });

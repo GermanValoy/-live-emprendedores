@@ -24,12 +24,13 @@ type Props = {
 /** La sala de la compradora: espera animada, el vivo a pantalla completa y el cierre. Siempre oscura. */
 export function SalaVivo({ tienda, productos, vivoInicial, config, siguiendo, conSesion }: Props) {
   const videoRef = useRef<HTMLVideoElement>(null);
-  const { vivo, estado, mirando, reproduccion, sinSonido, activarSonido } = useSalaVivo(tienda.id, vivoInicial, config, videoRef);
+  const { vivo, estado, mirando, reproduccion, sinSonido, activarSonido, canalListo } = useSalaVivo(tienda.id, vivoInicial, config, videoRef);
   const abierto = estado === "en-vivo" || estado === "vuelve-pronto" || estado === "reconectando-feriante";
   const linkTienda = `/@${tienda.handle}`;
 
   return (
-    <main className="fixed inset-0 z-50 overflow-hidden bg-black text-white">
+    // data-canal: avisa (a las pruebas) que los cambios del vivo ya llegan solos.
+    <main data-canal={canalListo ? "listo" : "conectando"} className="fixed inset-0 z-50 overflow-hidden bg-black text-white">
       {/* El video está siempre montado (así el reproductor lo encuentra); se ve solo con el vivo abierto. */}
       <video ref={videoRef} playsInline autoPlay className={cn("absolute inset-0 size-full object-cover", !abierto && "hidden")} />
 

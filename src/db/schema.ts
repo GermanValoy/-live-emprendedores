@@ -1,4 +1,5 @@
-import { boolean, index, integer, pgEnum, pgTable, primaryKey, text, timestamp, unique, uuid } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
+import { boolean, index, integer, pgEnum, pgTable, primaryKey, text, timestamp, unique, uniqueIndex, uuid } from "drizzle-orm/pg-core";
 import { authUsers } from "drizzle-orm/supabase";
 
 /** Perfil público de cada persona. Se crea solo al registrarse (ver drizzle/0001_seguridad_users.sql). */
@@ -107,4 +108,46 @@ export const follows = pgTable(
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [primaryKey({ columns: [t.userId, t.storeId] }), index("follows_store_id_idx").on(t.storeId)],
+);
+
+// Vivos (Fase 1, Parte 2). Reglas en drizzle/0005_seguridad_vivos.sql.
+
+/** Fila única con los tiempos de espera del vivo. Se cambia por SQL. */
+export const liveConfig = pgTable("live_config", {
+  id: integer("id").primaryKey(),
+  sinConexionSegundos: integer("sin_conexion_segundos").notNull().default(300),
+  fueraSegundos: integer("fuera_segundos").notNull().default(900),
+  senalCadaSegundos: integer("senal_cada_segundos").notNull().default(20),
+});
+
+/** Transmisión de Cloudflare de cada puesto. Solo la lee el servidor (service_role). */
+export const storeStreams = pgTable("store_streams", {
+  storeId: uuid("store_id").primaryKey().references(() => stores.id, { onDelete: "cascade" }),
+  cloudflareUid: text("cloudflare_uid").notNull(),
+  whipUrl: text("whip_url").notNull(),
+  whepUrl: text("whep_url").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const liveSessions = pgTable(
+  "live_sessions",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: uuid("store_id").notNull().references(() => stores.id, { onDelete: "cascade" }),
+    whepUrl: text("whep_url").notNull(),
+    deviceId: uuid("device_id").notNull(),
+    startedAt: timestamp("started_at", { withTimezone: true }).notNull().defaultNow(),
+    endedAt: timestamp("ended_at", { withTimezone: true }),
+    endReason: text("end_reason"),
+    endedBy: uuid("ended_by").references(() => users.id, { onDelete: "set null" }),
+    lastSignalAt: timestamp("last_signal_at", { withTimezone: true }).notNull().defaultNow(),
+    awaySince: timestamp("away_since", { withTimezone: true }),
+    muted: boolean("muted").notNull().default(false),
+    viewers: integer("viewers").notNull().default(0),
+    peakViewers: integer("peak_viewers").notNull().default(0),
+  },
+  (t) => [
+    uniqueIndex("live_sessions_un_abierto_por_puesto").on(t.storeId).where(sql`ended_at IS NULL`),
+    index("live_sessions_store_started_idx").on(t.storeId, t.startedAt.desc()),
+  ],
 );

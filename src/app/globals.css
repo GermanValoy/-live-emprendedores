@@ -117,3 +117,151 @@
     @apply bg-background text-foreground font-sans antialiased;
   }
 }
+
+/* ===== Espera del vivo: "El puesto de feria" =====
+   Solo transform y opacity. El escenario es siempre oscuro (como el video que va a venir). */
+.espera-escena {
+  --espera-fondo: #160d13;
+  --espera-texto: #f8eff4;
+  --espera-suave: #c9b3bf;
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  min-height: 30rem;
+  width: 100%;
+  background: var(--espera-fondo);
+  color: var(--espera-texto);
+}
+.espera-toldo {
+  position: absolute;
+  top: 3.5rem;
+  left: -0.6rem;
+  right: -0.6rem;
+  height: 4.4rem;
+  display: flex;
+  transform-origin: top center;
+  animation: espera-mecer 4s cubic-bezier(0.77, 0, 0.175, 1) infinite;
+  z-index: 2;
+}
+.espera-toldo i {
+  flex: 1;
+  background: var(--primary);
+  border-radius: 0 0 50% 50% / 0 0 40% 40%;
+}
+.espera-toldo i:nth-child(even) {
+  background: #fff3f8;
+}
+@keyframes espera-mecer {
+  0%,
+  100% {
+    transform: rotate(-1.2deg);
+  }
+  50% {
+    transform: rotate(1.2deg);
+  }
+}
+.espera-guirnalda {
+  position: absolute;
+  top: 8.8rem;
+  left: 0.4rem;
+  right: 0.4rem;
+  height: 2.5rem;
+  z-index: 3;
+}
+.espera-guirnalda svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+.espera-lampara {
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--codigo);
+  box-shadow: 0 0 12px 3px rgb(245 217 10 / 0.7);
+  animation: espera-titilar 1.8s ease-in-out infinite;
+}
+@keyframes espera-titilar {
+  0%,
+  100% {
+    opacity: 0.25;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+.espera-mostrador {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 7.5rem;
+  background: linear-gradient(#3d1b2e, #22141d);
+  border-top: 4px solid #5a2a43;
+  z-index: 1;
+}
+.espera-centro {
+  position: absolute;
+  top: 14rem;
+  left: 0;
+  right: 0;
+  text-align: center;
+  z-index: 4;
+}
+.espera-titulo {
+  font-size: 1.9rem;
+  font-weight: 900;
+  letter-spacing: -0.02em;
+  line-height: 1.15;
+}
+.espera-letra {
+  display: inline-block;
+  animation: espera-saltito 2.4s cubic-bezier(0.23, 1, 0.32, 1) infinite;
+}
+@keyframes espera-saltito {
+  0%,
+  60%,
+  100% {
+    transform: translateY(0);
+  }
+  20% {
+    transform: translateY(-9px);
+  }
+}
+.espera-cartel {
+  display: inline-block;
+  margin-top: 0.9rem;
+  background: #2e1c27;
+  border: 2px dashed var(--codigo);
+  color: var(--codigo);
+  font-weight: 800;
+  font-size: 0.9rem;
+  padding: 0.45rem 0.9rem;
+  border-radius: 0.65rem;
+  transform: rotate(-3deg);
+}
+.espera-pie {
+  position: absolute;
+  bottom: 1rem;
+  left: 0;
+  right: 0;
+  padding: 0 1.2rem;
+  text-align: center;
+  font-size: 0.85rem;
+  line-height: 1.4;
+  color: var(--espera-suave);
+  overflow-wrap: anywhere;
+  z-index: 5;
+}
+@media (prefers-reduced-motion: reduce) {
+  .espera-toldo,
+  .espera-lampara,
+  .espera-letra {
+    animation: none;
+  }
+  .espera-lampara {
+    opacity: 1;
+  }
+}

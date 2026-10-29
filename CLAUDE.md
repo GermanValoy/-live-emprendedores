@@ -111,8 +111,9 @@ Programar los pagos como un **módulo intercambiable** (`lib/payments/` con una 
 **Ya creadas** (migraciones en `drizzle/`):
 - Fase 0: `users` (perfil público; se crea solo al registrarse).
 - Fase 1, Parte 1: `platform_admins` (administradores de la plataforma; el primero se carga a mano por SQL, sin escribir el email en el código), `invitations`, `stores` (con `handle` = @usuario y `onboarding_step` del recorrido de 4 pasos), `store_private_info` (alias, titular, dirección y horarios de retiro: **solo la dueña**), `store_delivery_options` (retiro en domicilio, envío gratis/fijo/a coordinar, punto de encuentro), `products`, `product_photos` (hasta 4 por producto), `follows`.
+- Fase 1, Parte 2: `live_sessions` (cada vivo, con su inicio y su fin), `store_streams` (la transmisión de cada tienda en Cloudflare, con la URL para transmitir (WHIP), que es una credencial: **solo la lee el servidor**) y `live_config` (los tiempos de la sala: 300 s sin conexión, 900 s fuera de pantalla y señal de vida cada 20 s; se cambian con un `UPDATE` en `live_config`, nunca en el código).
 
-**Planeadas**: `live_sessions` (Parte 2), `chat_messages` y `moderation_actions` (Parte 3), `live_codes`, `claims`, `orders`, `order_items`, `payment_reports` (Parte 4), `store_members` (ayudantes, Fase 2), `buyer_reputation` (Fase 2), `reports` (plataforma).
+**Planeadas**: `chat_messages` y `moderation_actions` (Parte 3), `live_codes`, `claims`, `orders`, `order_items`, `payment_reports` (Parte 4), `store_members` (ayudantes, Fase 2), `buyer_reputation` (Fase 2), `reports` (plataforma).
 
 - Row Level Security activado en **todas** las tablas (RLS automático habilitado en Supabase; las tablas nuevas NO se exponen automáticamente a la Data API: dar permisos explícitos en cada migración).
 - Montos en **centavos enteros (ARS)**, nunca en float.
@@ -133,7 +134,7 @@ Programar los pagos como un **módulo intercambiable** (`lib/payments/` con una 
 
 ## 10. Plan por fases
 
-**Estado (2026-10-16)**: Fase 0 publicada · Fase 1: Parte 0 (pantallas) y Parte 1 (tiendas y productos) publicadas en `tuferialive.vercel.app` · **en curso: Parte 2 (sala en vivo)**, empezando por una prueba de factibilidad de transmisión desde el navegador en iPhone y Android (hay feriantes con los dos).
+**Estado (2026-10-28)**: Fase 0 publicada · Fase 1: Parte 0 (pantallas) y Parte 1 (tiendas y productos) publicadas en `tuferialive.vercel.app` · **Parte 2 (sala en vivo) construida** en la rama `fase-1-parte-2-sala`; faltan la revisión final, publicarla y la prueba en celulares reales (iPhone y Android).
 
 **Fase 0 – Bases**: proyecto Next.js + Supabase + Drizzle, sistema de diseño (colores, tipografía, componentes base), login, estructura de carpetas, CI con tests, deploy en Vercel.
 
@@ -155,7 +156,16 @@ Programar los pagos como un **módulo intercambiable** (`lib/payments/` con una 
 - La base no controla el formato de las rutas de fotos ni impide saltar pasos del recorrido manipulando el navegador.
 - Si se pierde la respuesta al abrir el puesto, el reintento dice "Esta invitación ya se usó." aunque la tienda se creó.
 - Vista previa con foto al compartir el link de una tienda por WhatsApp.
-- Antes del piloto: proyecto de Supabase separado para producción y plan pago (para que no se pause).
+- Antes del piloto: proyecto de Supabase separado para producción y plan pago (para que no se pause). Hoy las pruebas automáticas escriben en la misma base que usa la página publicada: mientras corren, pueden aparecer vivos de prueba en "En vivo ahora". Separarlo antes de invitar a las feriantes.
+- Si la feriante cierra la página, el vivo queda como "vuelve en un momento" hasta 15 minutos (en vez de 5): el celular no distingue bien entre cerrar y salir un rato.
+- Si la transmisión no llega a Cloudflare (por ejemplo, Cloudflare caído), el vivo figura "EN VIVO" con la imagen en negro mientras su página esté abierta: mandar en la señal si realmente está transmitiendo.
+- La tabla de vivos muestra públicamente qué cuenta de administración cortó un vivo (`ended_by`, un identificador sin nombre) y el `device_id`: ocultar esas columnas.
+- Limitar la cantidad de señales por persona en `/mi-puesto/vivo/senal` (junto con el límite del chat, Parte 3).
+- La portada y la sala reciben cada cambio de todos los vivos (optimizar cuando haya muchos).
+- Si la compradora entra a un vivo que ya perdió la señal, el aviso "se está reconectando" tarda hasta 40 s en aparecer.
+- Idea del dueño (2026-10-29): en "vuelve en un momento" y "se está reconectando", en vez de solo el cartel de texto, mostrar una animación o un indicador de carga con la portada o la foto del puesto.
+- Borrar la transmisión `prueba-vivo` en Cloudflare (la borra el dueño a mano; sacar esta línea cuando esté hecho).
+- Borrar los 2 administradores temporales de `platform_admins` al terminar la prueba en celulares.
 
 - Agentes de IA como moderadores del chat y asistentes de la vendedora.
 - Más seguridad para emprendedoras y compradoras (verificación de identidad de la vendedora, reputación pública, denuncias).
@@ -180,8 +190,8 @@ Next.js es "todo en uno": cada pantalla y las acciones del servidor que usa vive
 | Carpeta | Qué hay | Rol |
 |---|---|---|
 | `src/app/` | Una carpeta por dirección de la app. Adentro: `page.tsx` (la pantalla) y, si guarda datos, `acciones.ts` (Server Actions: el "backend" de esa pantalla) | Pantallas + servidor |
-| `src/components/` | Piezas visuales reutilizables, agrupadas por tema: `ui/` (shadcn), `marca/`, `navegacion/`, `fotos/`, `tiendas/` | Interfaz |
-| `src/lib/` | Lógica sin pantalla, por tema: `tiendas/` (validaciones, entregas, lecturas de datos, tipos), `vivos/` (Cloudflare Stream, WebRTC, registro de cortes), `fotos/` (compresión, subida, rutas), `format/` (plata y fechas), `auth/`, `supabase/` (conexiones), `red.ts` (errores de conexión) | Reglas del negocio |
+| `src/components/` | Piezas visuales reutilizables, agrupadas por tema: `ui/` (shadcn), `marca/`, `navegacion/`, `fotos/`, `tiendas/`, `vivos/` | Interfaz |
+| `src/lib/` | Lógica sin pantalla, por tema: `tiendas/` (validaciones, entregas, lecturas de datos, tipos), `vivos/` (Cloudflare Stream, transmitir y mirar con WebRTC, presencia, señal de vida, privacidad, reconexión y lecturas de datos), `fotos/` (compresión, subida, rutas), `format/` (plata y fechas), `auth/`, `supabase/` (conexiones), `red.ts` (errores de conexión) | Reglas del negocio |
 | `src/db/schema.ts` | Descripción de las tablas (Drizzle) | Base de datos |
 | `drizzle/` | Migraciones numeradas: las `seguridad_*.sql` tienen los permisos (RLS), funciones y reglas de Storage | Base de datos |
 | `src/proxy.ts` | Corre antes de cada página: renueva la sesión y protege `/cuenta` y `/mi-puesto` | Seguridad |
@@ -198,9 +208,10 @@ Next.js es "todo en uno": cada pantalla y las acciones del servidor que usa vive
 | `/@usuario` y `/@usuario/p/[id]` | `src/app/tienda/[handle]/…` (reescritura en `next.config.ts`, porque en Next las carpetas con `@` son otra cosa) | Todos |
 | `/seguidos`, `/mis-compras` | `src/app/seguidos/`, `src/app/mis-compras/` | Compradoras |
 | `/mi-puesto` y debajo (`armar`, `tienda`, `productos`) | `src/app/mi-puesto/…` | Feriantes |
+| `/mi-puesto/vivo` | `src/app/mi-puesto/vivo/` | Feriantes |
+| `/@usuario/vivo` | `src/app/tienda/[handle]/vivo/` | Todos |
 | `/invitacion/[token]` | `src/app/invitacion/[token]/` | Quien recibe una invitación |
 | `/admin` | `src/app/admin/` | Solo administradores (los demás ven "no encontrada") |
-| `/prueba-vivo` | `src/app/prueba-vivo/` | Solo administradores. Prueba de transmisión descartable: se borra cuando exista la sala |
 | `/cuenta` | `src/app/cuenta/` | Con sesión |
 | `/auth/callback` | `src/app/auth/callback/route.ts` | Vuelta del login de Google |
 | `/diseno` | `src/app/diseno/` | Muestra interna del sistema de diseño |

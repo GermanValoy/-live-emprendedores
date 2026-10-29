@@ -109,7 +109,7 @@ Mirar es libre, sin sesión. La sala es siempre oscura (video a pantalla complet
 | **Vuelve en un momento** | La feriante salió de la pantalla: cartel "[Nombre] vuelve en un momento" sobre la imagen, en lugar de negro |
 | **Reconectando** | Se cortó la conexión de quien mira: "Reconectando…", sin sacarla de la sala. Reconexión automática |
 | **Se está reconectando la feriante** | Se cortó la transmisión: "[Nombre] se está reconectando" durante hasta 5 minutos (o 15 si la feriante salió de la pantalla) |
-| **Terminó** | "El vivo terminó. Gracias por acompañar a [Nombre]." + botón a su tienda |
+| **Terminó** | La misma feria de la espera con "¡Gracias por venir!", el cartel "El vivo terminó", "Cuando [Nombre] vuelva a salir en vivo, se abre sola acá.", "Suele estar en vivo…", sus productos y botón a su tienda. Si vuelve a salir en vivo, pasa sola al estado "En vivo" (cambio pedido por el dueño en la prueba con celulares del 2026-10-29: casi nunca hace otro vivo enseguida) |
 | **Puesto inexistente** | La página "no encontrada" de siempre |
 
 Mientras espera o mira, la compradora no recarga nada: los cambios de estado llegan por Supabase Realtime.

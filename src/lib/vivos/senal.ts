@@ -1,0 +1,101 @@
+/**
+ * Señal de vida del vivo: mientras transmite, la pantalla de la feriante avisa al servidor
+ * cada tantos segundos (lo dice `live_config`) que sigue ahí, si está fuera de la pantalla,
+ * si está silenciada y cuánta gente mira.
+ */
+
+export type DatosSenal = { fuera: boolean; silenciada: boolean; mirando: number };
+/** `sin_sesion`: se le venció la sesión (varios 401 seguidos aun después de renovarla: hay que volver a entrar). */
+export type ResultadoSenal = "ok" | "otro_dispositivo" | "terminado" | "sin_sesion";
+
+const RUTA = "/mi-puesto/vivo/senal";
+const RESULTADOS: readonly string[] = ["ok", "otro_dispositivo", "terminado"];
+/** Un 401 suelto puede ser un tropiezo al renovar la sesión: recién después de tantos seguidos se da por vencida. */
+const MAX_401_SEGUIDOS = 3;
+
+export function crearSenal(op: {
+  vivoId: string;
+  dispositivo: string;
+  cadaSegundos: number;
+  leer(): DatosSenal;
+  alResultado(r: ResultadoSenal): void;
+  /** Intenta renovar la sesión del navegador (después de un 401). */
+  renovarSesion(): Promise<unknown>;
+  f?: typeof fetch;
+}): { avisarAhora(): void; detener(): void } {
+  const f = op.f ?? ((...args: Parameters<typeof fetch>) => fetch(...args));
+  let activa = true;
+  let seguidos401 = 0;
+  // De a una: si dos viajan juntas, el servidor puede recibir primero la nueva y quedarse con la vieja.
+  let enCamino = false;
+  let otraPendiente = false;
+
+  const detener = () => {
+    activa = false;
+    clearInterval(reloj);
+  };
+
+  /** Lee la respuesta; `null` si fue un error pasajero y hay que seguir intentando. */
+  async function interpretar(respuesta: Response): Promise<ResultadoSenal | null> {
+    if (respuesta.status === 401) {
+      if (++seguidos401 >= MAX_401_SEGUIDOS) return "sin_sesion";
+      // Puede ser pasajero (se cortó la red justo al renovar la sesión): se renueva y se sigue mandando.
+      void op.renovarSesion().catch(() => {});
+      return null;
+    }
+    seguidos401 = 0;
+    // Ya no puede mandar señales de este vivo: para ella, terminó.
+    if (respuesta.status === 403) return "terminado";
+    if (!respuesta.ok) return null;
+    const cuerpo: unknown = await respuesta.json().catch(() => null);
+    const resultado = (cuerpo as { resultado?: unknown } | null)?.resultado;
+    return typeof resultado === "string" && RESULTADOS.includes(resultado) ? (resultado as ResultadoSenal) : null;
+  }
+
+  async function enviar() {
+    if (!activa) return;
+    if (enCamino) {
+      // Sale cuando vuelva la que está en camino, con los datos de ese momento.
+      otraPendiente = true;
+      return;
+    }
+    enCamino = true;
+    let resultado: ResultadoSenal | null = null;
+    // Una que no responde se abandona antes de la próxima, así no frena a las demás.
+    const corte = new AbortController();
+    const plazo = setTimeout(() => corte.abort(), op.cadaSegundos * 1000);
+    try {
+      const respuesta = await f(RUTA, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ vivoId: op.vivoId, dispositivo: op.dispositivo, ...op.leer() }),
+        // Para que la señal salga aunque la página se esté cerrando o pasando a segundo plano.
+        keepalive: true,
+        signal: corte.signal,
+      });
+      resultado = await interpretar(respuesta);
+    } catch {
+      // Sin conexión: se vuelve a intentar en la próxima.
+    } finally {
+      clearTimeout(plazo);
+      enCamino = false;
+    }
+    if (activa && resultado !== null) {
+      if (resultado !== "ok") detener();
+      op.alResultado(resultado);
+    }
+    if (activa && otraPendiente) {
+      otraPendiente = false;
+      void enviar();
+    }
+  }
+
+  const reloj = setInterval(() => void enviar(), op.cadaSegundos * 1000);
+
+  return {
+    avisarAhora() {
+      void enviar();
+    },
+    detener,
+  };
+}

@@ -82,3 +82,14 @@ test("los botones se achican al tocarlos, salvo con reducir movimiento", async (
   await page.goto("/diseno");
   expect(await escalaAlApretar()).toBe("none");
 });
+
+test("muestra la espera del vivo", async ({ page }) => {
+  await page.goto("/diseno");
+  await expect(page.getByRole("heading", { name: "¡Pronto arrancamos!" })).toBeVisible();
+  const toldo = page.getByTestId("toldo");
+  expect(await toldo.evaluate((el) => getComputedStyle(el).animationName)).not.toBe("none");
+
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.goto("/diseno");
+  expect(await page.getByTestId("toldo").evaluate((el) => getComputedStyle(el).animationName)).toBe("none");
+});

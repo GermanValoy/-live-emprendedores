@@ -41,3 +41,17 @@ export async function anularInvitacion(id: string): Promise<Resultado> {
     .is("used_at", null);
   return error ? { ok: false, error: "No se pudo anular. Probá de nuevo." } : { ok: true };
 }
+
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+export async function cortarVivo(vivoId: string): Promise<Resultado> {
+  if (typeof vivoId !== "string" || !UUID.test(vivoId)) return { ok: false, error: "No se pudo cortar el vivo. Probá de nuevo." };
+  const sesion = await adminActual();
+  if (!sesion) return { ok: false, error: SIN_PERMISO };
+  const { error } = await sesion.supabase.rpc("cortar_vivo", { p_vivo: vivoId });
+  if (error) {
+    console.error("No se pudo cortar el vivo desde administración:", error.message);
+    return { ok: false, error: "No se pudo cortar el vivo. Probá de nuevo." };
+  }
+  return { ok: true };
+}

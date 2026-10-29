@@ -13,6 +13,15 @@ export function normalizarHandle(texto: string): string {
   return texto.trim().replace(/^@+/, "").toLowerCase();
 }
 
+/** El @usuario tal como llega en la dirección (/@usuario). Si viene mal codificado, null (= "no encontrado"). */
+export function handleDeRuta(segmento: string): string | null {
+  try {
+    return decodeURIComponent(segmento);
+  } catch {
+    return null;
+  }
+}
+
 export function errorDeHandle(handle: string): string | null {
   if (handle.length < 3 || handle.length > 30 || !FORMATO_HANDLE.test(handle)) {
     return "Usá solo minúsculas, números y puntos (de 3 a 30).";

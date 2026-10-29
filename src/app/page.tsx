@@ -4,9 +4,11 @@ import { entrarConGoogle } from "@/app/auth/acciones";
 import { EstadoVacio } from "@/components/estado-vacio";
 import { TarjetaPuesto } from "@/components/tiendas/tarjeta-puesto";
 import { Button } from "@/components/ui/button";
+import { VivosAhora } from "@/components/vivos/vivos-ahora";
 import { obtenerUsuarioId } from "@/lib/auth/sesion";
 import { createClient } from "@/lib/supabase/server";
 import { idsSeguidos, listarPuestos } from "@/lib/tiendas/datos";
+import { listarVivosAbiertos } from "@/lib/vivos/datos";
 
 type Props = { searchParams: Promise<{ error?: string | string[] }> };
 
@@ -24,10 +26,12 @@ async function Puestos() {
   await connection();
   const supabase = await createClient();
   const userId = await obtenerUsuarioId(supabase);
-  const [puestos, seguidos] = await Promise.all([
+  const [puestos, vivos, seguidos] = await Promise.all([
     listarPuestos(supabase),
+    listarVivosAbiertos(supabase),
     userId ? idsSeguidos(supabase, userId) : Promise.resolve(new Set<string>()),
   ]);
+  const enVivo = new Set(vivos.map((v) => v.puesto.id));
   return (
     <>
       {!userId && (
@@ -35,14 +39,14 @@ async function Puestos() {
           <Button type="submit" size="lg" className="w-full">Entrar con Google</Button>
         </form>
       )}
-      <p className="rounded-xl bg-secondary p-3 text-sm">Ahora no hay nadie en vivo. Seguí a tus puestos favoritos.</p>
+      <VivosAhora iniciales={vivos} />
       <h2 className="text-lg font-bold">Puestos</h2>
       {puestos.length === 0 ? (
         <EstadoVacio texto="Pronto vas a ver acá los puestos de Tu Feria Live." />
       ) : (
         <div className="flex flex-col gap-3">
           {puestos.map((p) => (
-            <TarjetaPuesto key={p.id} puesto={p} siguiendo={seguidos.has(p.id)} conSesion={Boolean(userId)} />
+            <TarjetaPuesto key={p.id} puesto={p} siguiendo={seguidos.has(p.id)} conSesion={Boolean(userId)} enVivo={enVivo.has(p.id)} />
           ))}
         </div>
       )}

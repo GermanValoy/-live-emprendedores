@@ -1,8 +1,11 @@
-import { expect, test } from "@playwright/test";
+import { expect, type Page, test } from "@playwright/test";
 import { borrarUsuarioPrueba, crearUsuarioPrueba, type UsuarioPrueba } from "../helpers/usuario-prueba";
 import { borrarFotosDeTienda, crearTiendaPrueba, handleAleatorio } from "../helpers/tiendas-prueba";
 import { elegirFoto } from "./fotos";
 import { cookiesDeSesion } from "./sesion";
+
+// Las pruebas comparten una tienda (se crea una vez): van de a una para que ninguna pise lo que guardó otra.
+test.describe.configure({ mode: "serial" });
 
 let feriante: UsuarioPrueba;
 let otra: UsuarioPrueba;
@@ -23,8 +26,16 @@ test.beforeEach(async ({ context }) => {
   await context.addCookies(await cookiesDeSesion(feriante.sesion));
 });
 
+/** Abre (o recarga) Mi tienda y espera a que esté activa: si se escribe antes, lo escrito se puede perder. */
+async function abrirMiTienda(page: Page, recargar = false) {
+  if (recargar) await page.reload();
+  else await page.goto("/mi-puesto/tienda");
+  // El selector de la foto se habilita recién cuando la página está activa (los formularios son de la misma pantalla).
+  await expect(page.getByLabel("Foto del puesto")).toBeEnabled({ timeout: 30_000 });
+}
+
 test("edita los datos de la tienda y avisa si el @usuario está tomado", async ({ page }) => {
-  await page.goto("/mi-puesto/tienda");
+  await abrirMiTienda(page);
   await page.getByLabel("@usuario").fill(tiendaOtra.handle);
   await expect(page.getByText(`@${tiendaOtra.handle} ya está en uso. Probá con otro.`)).toBeVisible();
   const nuevo = handleAleatorio("nuevo");
@@ -33,7 +44,7 @@ test("edita los datos de la tienda y avisa si el @usuario está tomado", async (
   await page.getByLabel("Suele estar en vivo…").fill("Mar. y jue. 20 h");
   await page.getByRole("button", { name: "Guardar datos" }).click();
   await expect(page.getByText("Datos guardados")).toBeVisible();
-  await page.reload();
+  await abrirMiTienda(page, true);
   await expect(page.getByLabel("@usuario")).toHaveValue(nuevo);
   await page.getByLabel("@usuario").fill(handleAleatorio("otro"));
   await page.getByRole("button", { name: "Guardar datos" }).click();
@@ -41,7 +52,7 @@ test("edita los datos de la tienda y avisa si el @usuario está tomado", async (
 });
 
 test("guarda el cobro y las entregas", async ({ page }) => {
-  await page.goto("/mi-puesto/tienda");
+  await abrirMiTienda(page);
   await page.getByLabel("Alias").fill("mica.ropa.yb");
   await page.getByLabel("Titular").fill("Micaela Díaz");
   await page.getByRole("button", { name: "Guardar cobro" }).click();

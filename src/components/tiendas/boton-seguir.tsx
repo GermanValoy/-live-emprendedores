@@ -8,9 +8,10 @@ import { alternarSeguir } from "@/app/tienda/acciones";
 import { Button } from "@/components/ui/button";
 import { alServidor } from "@/lib/red";
 
-type Props = { storeId: string; handle: string; siguiendo: boolean; conSesion: boolean };
+/** `volverA`: a dónde vuelve después de entrar con Google (por defecto, la tienda). */
+type Props = { storeId: string; handle: string; siguiendo: boolean; conSesion: boolean; volverA?: string };
 
-export function BotonSeguir({ storeId, handle, siguiendo, conSesion }: Props) {
+export function BotonSeguir({ storeId, handle, siguiendo, conSesion, volverA }: Props) {
   const router = useRouter();
   const [estado, setEstado] = useOptimistic(siguiendo);
   const [, iniciar] = useTransition();
@@ -18,7 +19,7 @@ export function BotonSeguir({ storeId, handle, siguiendo, conSesion }: Props) {
   if (!conSesion) {
     return (
       <form action={entrarConGoogle}>
-        <input type="hidden" name="next" value={`/@${handle}`} />
+        <input type="hidden" name="next" value={volverA ?? `/@${handle}`} />
         <Button type="submit">Seguir</Button>
       </form>
     );

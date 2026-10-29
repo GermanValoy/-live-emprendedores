@@ -114,6 +114,41 @@ test("terminó", async ({ page }) => {
   expect(pedidosMirar).toBe(alTerminar);
 });
 
+test("volver a la sala por los links después de un vivo terminado muestra el vivo nuevo, no el cierre viejo", async ({ page }) => {
+  const { mica, tienda } = await nuevaMica();
+  const v1 = await abrirVivo(mica, tienda);
+  await page.goto(`/@${tienda.handle}/vivo`);
+  await expect(page.getByText("EN VIVO", EN_VIVO)).toBeVisible();
+  const { error } = await mica.cliente.rpc("terminar_vivo", { p_vivo: v1.vivo });
+  if (error) throw error;
+  await expect(page.getByText("El vivo terminó. Gracias por acompañar a Mica.")).toBeVisible({ timeout: 30_000 });
+
+  // Como la compradora: a la tienda y al Inicio por los links, sin recargar (Next guarda la sala escondida).
+  await page.getByRole("link", { name: "Ver su tienda" }).click();
+  await expect(page.getByRole("heading", { name: "Mica", level: 1 })).toBeVisible({ timeout: 30_000 });
+  // dispatchEvent: en desarrollo el botón de Next tapa la barra de abajo. Se reintenta hasta que la página responda.
+  await expect(async () => {
+    await page.getByRole("navigation", { name: "Navegación principal" }).getByRole("link", { name: "Inicio" }).dispatchEvent("click");
+    await expect(page).toHaveURL(/\/$/, { timeout: 3_000 });
+  }).toPass({ timeout: 30_000 });
+  await abrirVivo(mica, tienda);
+  const tarjeta = page.locator(`a[href="/@${tienda.handle}/vivo"]`).first();
+  await expect(tarjeta).toBeVisible({ timeout: 30_000 });
+
+  // Desde que toca la tarjeta, el cierre del vivo anterior no tiene que aparecer ni un instante.
+  await page.evaluate(() => {
+    const w = window as unknown as { vioCierreViejo: boolean };
+    w.vioCierreViejo = false;
+    const mirar = () => { if (document.body.innerText.includes("El vivo terminó")) w.vioCierreViejo = true; };
+    new MutationObserver(mirar).observe(document.body, { subtree: true, childList: true, attributes: true, characterData: true });
+  });
+  await tarjeta.dispatchEvent("click");
+  await expect(page).toHaveURL(new RegExp(`/@${tienda.handle}/vivo$`), { timeout: 30_000 });
+  // El Inicio queda guardado escondido con su propio "EN VIVO": se mira solo lo visible.
+  await expect(page.getByText("EN VIVO", EN_VIVO).filter({ visible: true })).toBeVisible({ timeout: 30_000 });
+  expect(await page.evaluate(() => (window as unknown as { vioCierreViejo: boolean }).vioCierreViejo)).toBe(false);
+});
+
 test("cuenta como mirando", async ({ page, browser }) => {
   const { mica, tienda } = await nuevaMica();
   const contextoMica = await browser.newContext({ ...devices["Pixel 7"], permissions: ["camera", "microphone"], baseURL: test.info().project.use.baseURL });

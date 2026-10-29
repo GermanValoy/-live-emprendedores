@@ -2,7 +2,7 @@
 
 import { cn } from "cn";
 import Link from "next/link";
-import { type ReactNode, useRef } from "react";
+import { type ReactNode, useLayoutEffect, useRef, useState } from "react";
 import { Foto } from "@/components/fotos/foto";
 import { EnVivo } from "@/components/marca/en-vivo";
 import { BotonSeguir } from "@/components/tiendas/boton-seguir";
@@ -22,7 +22,15 @@ type Props = {
 };
 
 /** La sala de la compradora: espera animada, el vivo a pantalla completa y el cierre. Siempre oscura. */
-export function SalaVivo({ tienda, productos, vivoInicial, config, siguiendo, conSesion }: Props) {
+export function SalaVivo(props: Props) {
+  // Next no cierra la pantalla al navegar: la esconde y al volver la muestra como quedó (Activity).
+  // La sala arranca de cero en cada visita, como recién cargada: sin el cierre del vivo anterior ni su reproductor.
+  const [visita, setVisita] = useState(0);
+  useLayoutEffect(() => () => setVisita((v) => v + 1), []);
+  return <Sala key={visita} {...props} />;
+}
+
+function Sala({ tienda, productos, vivoInicial, config, siguiendo, conSesion }: Props) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const { vivo, estado, mirando, reproduccion, sinSonido, activarSonido, canalListo } = useSalaVivo(tienda.id, vivoInicial, config, videoRef);
   const abierto = estado === "en-vivo" || estado === "vuelve-pronto" || estado === "reconectando-feriante";

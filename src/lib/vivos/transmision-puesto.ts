@@ -5,10 +5,11 @@ import { type CredencialesCloudflare, obtenerOCrearTransmision, type UrlsTransmi
 /**
  * Devuelve la transmisión propia del puesto; la crea en Cloudflare y la guarda la primera vez.
  * `db` debe ser el cliente de servidor con llave secreta (`store_streams` no es legible por nadie más).
+ * `cred` se llama solo si hay que crearla: con la transmisión guardada no hacen falta las claves de Cloudflare.
  */
 export async function obtenerTransmisionDelPuesto(
   storeId: string,
-  deps: { db: SupabaseClient; cred: CredencialesCloudflare; f?: typeof fetch },
+  deps: { db: SupabaseClient; cred: () => CredencialesCloudflare; f?: typeof fetch },
 ): Promise<UrlsTransmision> {
   const { db, cred, f } = deps;
   const { data, error } = await db
@@ -19,7 +20,7 @@ export async function obtenerTransmisionDelPuesto(
   if (error) throw error;
   if (data) return { uid: data.cloudflare_uid, urlTransmitir: data.whip_url, urlMirar: data.whep_url };
 
-  const urls = await obtenerOCrearTransmision(`puesto-${storeId}`, cred, f);
+  const urls = await obtenerOCrearTransmision(`puesto-${storeId}`, cred(), f);
   // Si otro pedido ganó la carrera, su fila queda y la nuestra se descarta.
   const guardado = await db.from("store_streams").upsert(
     { store_id: storeId, cloudflare_uid: urls.uid, whip_url: urls.urlTransmitir, whep_url: urls.urlMirar },

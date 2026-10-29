@@ -51,7 +51,7 @@ export async function salirEnVivo(dispositivo: string): Promise<ResultadoVivo> {
 
   try {
     // Garantiza que la transmisión del puesto exista y esté guardada: la base lee de ahí la URL para mirar.
-    await obtenerTransmisionDelPuesto(tienda.id, { db: createAdminClient(), cred: credencialesCloudflare() });
+    await obtenerTransmisionDelPuesto(tienda.id, { db: createAdminClient(), cred: credencialesCloudflare });
   } catch (e) {
     // Solo el mensaje: ErrorCloudflare nunca incluye la llave ni las URLs.
     console.error("salirEnVivo: transmisión", e instanceof ErrorCloudflare ? e.message : e);

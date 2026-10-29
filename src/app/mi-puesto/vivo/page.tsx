@@ -44,7 +44,7 @@ async function ContenidoVivo() {
   let urls: UrlsTransmision;
   try {
     // La URL para transmitir es una credencial: se lee con la llave secreta y solo llega a la dueña.
-    urls = await obtenerTransmisionDelPuesto(tienda.id, { db: createAdminClient(), cred: credencialesCloudflare() });
+    urls = await obtenerTransmisionDelPuesto(tienda.id, { db: createAdminClient(), cred: credencialesCloudflare });
   } catch (error) {
     if (!(error instanceof ErrorCloudflare)) throw error;
     console.error("mi-puesto/vivo: transmisión", error.message);

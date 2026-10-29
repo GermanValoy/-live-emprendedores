@@ -2,7 +2,7 @@
 
 import { cn } from "cn";
 import Link from "next/link";
-import { type ReactNode, useEffect, useRef, useState } from "react";
+import { type ReactNode, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { salirEnVivo, terminarVivo } from "@/app/mi-puesto/vivo/acciones";
 import { entrarConGoogle } from "@/app/auth/acciones";
 import { EnVivo } from "@/components/marca/en-vivo";
@@ -37,9 +37,16 @@ const ERROR_RED = "No se pudo completar. Revisá tu conexión y probá de nuevo.
 export function EstudioVivo(props: Props) {
   // Cada "Salir en vivo de nuevo" arma una pantalla nueva (cámara, señal y canales desde cero).
   const [intento, setIntento] = useState(0);
+  // Next no cierra la pantalla al navegar: la esconde y al volver la muestra como quedó (Activity).
+  // Acá cada visita tiene que empezar de cero, con los datos nuevos del servidor, no con el resumen del vivo anterior.
+  const [visita, setVisita] = useState(0);
+  useLayoutEffect(() => () => {
+    setVisita((v) => v + 1);
+    setIntento(0);
+  }, []);
   return (
     <Estudio
-      key={intento}
+      key={`${visita}-${intento}`}
       {...props}
       vivoAbierto={intento === 0 ? props.vivoAbierto : null}
       alSalirDeNuevo={() => setIntento((i) => i + 1)}

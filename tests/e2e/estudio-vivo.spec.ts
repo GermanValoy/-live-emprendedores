@@ -145,6 +145,26 @@ test("terminar con confirmación", async ({ page, context }) => {
   expect(await page.evaluate(() => (document.querySelector("video")?.srcObject ?? null) === null)).toBe(true);
 });
 
+test("después de terminar, vuelve a Mi puesto y puede salir en vivo otra vez", async ({ page, context }) => {
+  const { mica, tienda } = await nuevaMica();
+  await context.addCookies(await cookiesDeSesion(mica.sesion));
+  await page.goto("/mi-puesto");
+  await page.getByRole("link", { name: "Salir en vivo" }).click();
+  await expect(page.getByText("Vista previa · nadie te ve todavía")).toBeVisible({ timeout: 30_000 });
+  await page.getByRole("button", { name: "Salir en vivo" }).click();
+  await expect(page.getByText("EN VIVO", { exact: true })).toBeVisible({ timeout: 30_000 });
+  await page.getByRole("button", { name: "Terminar" }).click();
+  await page.getByRole("button", { name: "Sí, terminar" }).click();
+  await expect(page.getByText("¡Terminó tu vivo! 🎉")).toBeVisible({ timeout: 30_000 });
+  await page.getByRole("link", { name: "Volver a mi puesto" }).click();
+  await page.getByRole("link", { name: "Salir en vivo" }).click();
+  await expect(page.getByText("Vista previa · nadie te ve todavía")).toBeVisible({ timeout: 30_000 });
+  await expect(page.getByText("¡Terminó tu vivo! 🎉")).toHaveCount(0);
+  await page.getByRole("button", { name: "Salir en vivo" }).click();
+  await expect(page.getByText("EN VIVO", { exact: true })).toBeVisible({ timeout: 30_000 });
+  await expect.poll(async () => (await vivosDe(tienda.id)).filter((v) => v.ended_at === null).length).toBe(1);
+});
+
 test("volver a tu vivo", async ({ page, context }) => {
   const { mica, tienda } = await nuevaMica();
   const { data: id, error } = await mica.cliente.rpc("abrir_vivo", { p_store: tienda.id, p_device: crypto.randomUUID() });

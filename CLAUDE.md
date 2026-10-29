@@ -163,6 +163,7 @@ Programar los pagos como un **módulo intercambiable** (`lib/payments/` con una 
 - Limitar la cantidad de señales por persona en `/mi-puesto/vivo/senal` (junto con el límite del chat, Parte 3).
 - La portada y la sala reciben cada cambio de todos los vivos (optimizar cuando haya muchos).
 - Si la compradora entra a un vivo que ya perdió la señal, el aviso "se está reconectando" tarda hasta 40 s en aparecer.
+- Idea del dueño (2026-10-29): en "vuelve en un momento" y "se está reconectando", en vez de solo el cartel de texto, mostrar una animación o un indicador de carga con la portada o la foto del puesto.
 - Borrar la transmisión `prueba-vivo` en Cloudflare (la borra el dueño a mano; sacar esta línea cuando esté hecho).
 - Borrar los 2 administradores temporales de `platform_admins` al terminar la prueba en celulares.
 

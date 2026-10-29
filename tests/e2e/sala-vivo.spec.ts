@@ -121,8 +121,6 @@ test("cuenta como mirando", async ({ page, browser }) => {
     await contextoMica.addCookies(await cookiesDeSesion(mica.sesion));
     const estudio = await contextoMica.newPage();
     await estudio.goto("/mi-puesto/vivo");
-    await expect(estudio.getByText("Vista previa · nadie te ve todavía")).toBeVisible({ timeout: 30_000 });
-    await estudio.getByRole("button", { name: "Salir en vivo" }).click();
     await expect(estudio.getByText("👁 0")).toBeVisible({ timeout: 30_000 });
     await page.goto(`/@${tienda.handle}/vivo`);
     await expect(page.getByText("EN VIVO", EN_VIVO)).toBeVisible();

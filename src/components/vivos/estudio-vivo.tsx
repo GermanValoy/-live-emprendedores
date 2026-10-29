@@ -2,7 +2,8 @@
 
 import { cn } from "cn";
 import Link from "next/link";
-import { type ReactNode, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
+import { type ReactNode, useEffect, useEffectEvent, useLayoutEffect, useRef, useState } from "react";
 import { salirEnVivo, terminarVivo } from "@/app/mi-puesto/vivo/acciones";
 import { entrarConGoogle } from "@/app/auth/acciones";
 import { EnVivo } from "@/components/marca/en-vivo";
@@ -44,17 +45,25 @@ export function EstudioVivo(props: Props) {
     setVisita((v) => v + 1);
     setIntento(0);
   }, []);
+  // Un toque en "Salir en vivo" (en Mi puesto o "de nuevo") sale en vivo solo, sin otro botón.
+  // Con "atrás" del navegador no: bfcacheId cambia solo al entrar con un link, así nadie sale al aire sin querer.
+  const { bfcacheId } = useRouter();
+  const [salidaSolaHecha, setSalidaSolaHecha] = useState<string | null>(null);
   return (
     <Estudio
       key={`${visita}-${intento}`}
       {...props}
       vivoAbierto={intento === 0 ? props.vivoAbierto : null}
+      salirSolo={intento > 0 || salidaSolaHecha !== bfcacheId}
+      alSalirSolo={() => setSalidaSolaHecha(bfcacheId)}
       alSalirDeNuevo={() => setIntento((i) => i + 1)}
     />
   );
 }
 
-function Estudio({ tienda, urlTransmitir, config, vivoAbierto, alSalirDeNuevo }: Props & { alSalirDeNuevo(): void }) {
+function Estudio({
+  tienda, urlTransmitir, config, vivoAbierto, salirSolo, alSalirSolo, alSalirDeNuevo,
+}: Props & { salirSolo: boolean; alSalirSolo(): void; alSalirDeNuevo(): void }) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const transmisorRef = useRef<Transmisor | null>(null);
   const senalRef = useRef<{ avisarAhora(): void; detener(): void } | null>(null);
@@ -77,6 +86,14 @@ function Estudio({ tienda, urlTransmitir, config, vivoAbierto, alSalirDeNuevo }:
   const [confirmando, setConfirmando] = useState(false);
   const [terminando, setTerminando] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [consejo, setConsejo] = useState(false);
+
+  // El consejo de no salir de la pantalla se ve también al arrancar el vivo, unos segundos.
+  useEffect(() => {
+    if (!consejo) return;
+    const fuera = setTimeout(() => setConsejo(false), 10_000);
+    return () => clearTimeout(fuera);
+  }, [consejo]);
 
   /** Corta todo lo del vivo en este celular: señal, cuenta de gente, canal y cámara. */
   const cortarTodo = () => {
@@ -96,17 +113,29 @@ function Estudio({ tienda, urlTransmitir, config, vivoAbierto, alSalirDeNuevo }:
     setFase("fin");
   };
 
+  const alPrenderCamara = useEffectEvent(() => {
+    if (!salirSolo) return;
+    alSalirSolo();
+    void salir();
+  });
+
   // Cámara y privacidad: se arman al entrar y se apagan siempre al salir de la pantalla.
   useEffect(() => {
     const video = videoRef.current;
     if (!video) return;
     let cancelado = false;
     // Se espera un instante: si React desmonta enseguida (modo desarrollo), no se pide la cámara dos veces.
+    let ultimoEstado: EstadoTransmision = "preparando";
     const espera = setTimeout(() => {
-      void crearTransmisor(video, setEstadoTx).then((t) => {
+      void crearTransmisor(video, (e) => {
+        ultimoEstado = e;
+        setEstadoTx(e);
+      }).then((t) => {
         if (cancelado) { t.detener(); return; }
         if (silenciadaRef.current) t.silenciar(true);
         transmisorRef.current = t;
+        // Sale en vivo apenas prende la cámara. Sin cámara queda el aviso del permiso; si falla, el botón para reintentar.
+        if (ultimoEstado === "vista-previa") alPrenderCamara();
       });
     }, 0);
 
@@ -186,6 +215,7 @@ function Estudio({ tienda, urlTransmitir, config, vivoAbierto, alSalirDeNuevo }:
     // El cartel de "Saliste de la pantalla" es solo para cuando sale estando en vivo; el silencio sigue igual.
     setAvisoSilenciada(false);
     setFase("en-vivo");
+    setConsejo(true);
     void transmisor.salirEnVivo(urlTransmitir);
 
     const supabase = createClient();
@@ -264,6 +294,8 @@ function Estudio({ tienda, urlTransmitir, config, vivoAbierto, alSalirDeNuevo }:
   const enVivo = fase === "en-vivo";
   const camaraLista = estadoTx === "vista-previa" || estadoTx === "conectando" || estadoTx === "en-vivo" || estadoTx === "reconectando";
   const sinCamaraEnPrevia = fase !== "en-vivo" && fase !== "fin" && estadoTx === "sin-camara";
+  // Va a salir en vivo solo (o ya está saliendo): todavía no es una vista previa para mirarse.
+  const preparando = (fase === "saliendo" || (salirSolo && fase === "vista-previa")) && !sinCamaraEnPrevia && !error;
 
   return (
     <div className="fixed inset-0 z-50 overflow-hidden bg-black text-white">
@@ -312,7 +344,9 @@ function Estudio({ tienda, urlTransmitir, config, vivoAbierto, alSalirDeNuevo }:
                 </Link>
               )}
               <span className="mt-2 rounded-full bg-black/55 px-3 py-1.5 text-xs font-bold backdrop-blur">
-                {vivoAbierto ? "Vista previa · tu vivo sigue abierto" : "Vista previa · nadie te ve todavía"}
+                {preparando
+                  ? "Preparando tu vivo…"
+                  : vivoAbierto ? "Vista previa · tu vivo sigue abierto" : "Vista previa · nadie te ve todavía"}
               </span>
               <span className="size-11" aria-hidden="true" />
             </>
@@ -359,11 +393,7 @@ function Estudio({ tienda, urlTransmitir, config, vivoAbierto, alSalirDeNuevo }:
 
       {(fase === "vista-previa" || fase === "saliendo") && !sinCamaraEnPrevia && (
         <div className="absolute inset-x-0 bottom-0 flex flex-col gap-3 px-4 pb-[max(env(safe-area-inset-bottom),1rem)]">
-          <p className="rounded-2xl bg-black/55 px-4 py-3 text-sm leading-snug backdrop-blur">
-            <span aria-hidden="true">📌 </span>
-            Mientras estés en vivo no salgas de esta pantalla. Si salís, se silencia el micrófono y la gente ve
-            “Vuelvo en un momento”.
-          </p>
+          <ConsejoNoSalir />
           <div className="flex items-end justify-between gap-2">
             <BotonAvisarWhatsapp handle={tienda.handle} momento="antes" />
             <div className="flex gap-3">
@@ -379,6 +409,12 @@ function Estudio({ tienda, urlTransmitir, config, vivoAbierto, alSalirDeNuevo }:
           >
             {fase === "saliendo" ? "Saliendo en vivo…" : estadoTx === "preparando" ? "Prendiendo la cámara…" : "Salir en vivo"}
           </button>
+        </div>
+      )}
+
+      {enVivo && consejo && !confirmando && (
+        <div className="absolute inset-x-4 bottom-[calc(max(env(safe-area-inset-bottom),1rem)+14rem)]">
+          <ConsejoNoSalir />
         </div>
       )}
 
@@ -427,6 +463,16 @@ function Estudio({ tienda, urlTransmitir, config, vivoAbierto, alSalirDeNuevo }:
 
       {fase === "fin" && fin && <PantallaFin fin={fin} alSalirDeNuevo={alSalirDeNuevo} />}
     </div>
+  );
+}
+
+function ConsejoNoSalir() {
+  return (
+    <p className="rounded-2xl bg-black/55 px-4 py-3 text-sm leading-snug backdrop-blur">
+      <span aria-hidden="true">📌 </span>
+      Mientras estés en vivo no salgas de esta pantalla. Si salís, se silencia el micrófono y la gente ve
+      “Vuelvo en un momento”.
+    </p>
   );
 }
 

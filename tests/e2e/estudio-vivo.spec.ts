@@ -39,12 +39,17 @@ async function vivosDe(storeId: string) {
   return data;
 }
 
+/** Entrar a la pantalla ya sale en vivo solo, apenas prende la cámara. */
 async function entrarYSalirEnVivo(page: Page) {
   await page.goto("/mi-puesto/vivo");
-  // "nadie te ve todavía" o, si ya hay un vivo abierto, "tu vivo sigue abierto".
-  await expect(page.getByText(/^Vista previa · /)).toBeVisible({ timeout: 30_000 });
-  await page.getByRole("button", { name: "Salir en vivo" }).click();
   await expect(page.getByText("EN VIVO", { exact: true })).toBeVisible({ timeout: 30_000 });
+}
+
+/** Termina el vivo desde la pantalla, con la confirmación. */
+async function terminarDesdeLaPantalla(page: Page) {
+  await page.getByRole("button", { name: "Terminar" }).click();
+  await page.getByRole("button", { name: "Sí, terminar" }).click();
+  await expect(page.getByText("¡Terminó tu vivo! 🎉")).toBeVisible({ timeout: 30_000 });
 }
 
 /** Simula que la feriante se va a otra app (o vuelve), como lo avisa el navegador. */
@@ -75,18 +80,39 @@ test("puesto incompleto", async ({ page, context }) => {
   await expect(page.getByRole("button", { name: "Salir en vivo" })).toHaveCount(0);
 });
 
-test("vista previa y salir en vivo", async ({ page, context }) => {
+test("un solo toque en Mi puesto sale en vivo", async ({ page, context }) => {
   const { mica, tienda } = await nuevaMica();
   await context.addCookies(await cookiesDeSesion(mica.sesion));
   await page.goto("/mi-puesto");
   await page.getByRole("link", { name: "Salir en vivo" }).click();
-  await expect(page.getByText("Vista previa · nadie te ve todavía")).toBeVisible({ timeout: 30_000 });
-  await expect(page.getByText("Mientras estés en vivo no salgas de esta pantalla")).toBeVisible();
-  await page.getByRole("button", { name: "Salir en vivo" }).click();
   await expect(page.getByText("EN VIVO", { exact: true })).toBeVisible({ timeout: 30_000 });
   await expect(page.getByText("👁 0")).toBeVisible();
+  // El consejo de no salir de la pantalla se ve al arrancar.
+  await expect(page.getByText("Mientras estés en vivo no salgas de esta pantalla")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Salir en vivo" })).toHaveCount(0);
   const vivos = await vivosDe(tienda.id);
   expect(vivos.filter((v) => v.ended_at === null)).toHaveLength(1);
+});
+
+test("si falla al salir en vivo, avisa y deja reintentar con el botón", async ({ page, context }) => {
+  const { mica, tienda } = await nuevaMica();
+  await context.addCookies(await cookiesDeSesion(mica.sesion));
+  await page.goto("/mi-puesto");
+  // La primera vez el servidor no responde (como sin internet); después sí.
+  let primera = true;
+  await page.route("**/mi-puesto/vivo", (r) => {
+    if (r.request().method() === "POST" && primera) {
+      primera = false;
+      return r.abort("internetdisconnected");
+    }
+    return r.continue();
+  });
+  await page.getByRole("link", { name: "Salir en vivo" }).click();
+  await expect(page.getByText("No se pudo completar. Revisá tu conexión y probá de nuevo.")).toBeVisible({ timeout: 30_000 });
+  await expect(page.getByText("Vista previa · nadie te ve todavía")).toBeVisible();
+  await page.getByRole("button", { name: "Salir en vivo" }).click();
+  await expect(page.getByText("EN VIVO", { exact: true })).toBeVisible({ timeout: 30_000 });
+  await expect.poll(async () => (await vivosDe(tienda.id)).filter((v) => v.ended_at === null).length).toBe(1);
 });
 
 test("silenciar", async ({ page, context }) => {
@@ -115,11 +141,21 @@ test("salir de la pantalla silencia", async ({ page, context }) => {
   await expect.poll(async () => (await vivosDe(tienda.id))[0]?.away_since, { timeout: 15_000 }).toBeNull();
 });
 
-test("salir de la vista previa silencia sin el cartel de vuelta", async ({ page, context }) => {
-  const { mica } = await nuevaMica();
+test("volver con atrás no sale en vivo solo; salir de la vista previa silencia sin el cartel de vuelta", async ({ page, context }) => {
+  const { mica, tienda } = await nuevaMica();
   await context.addCookies(await cookiesDeSesion(mica.sesion));
-  await page.goto("/mi-puesto/vivo");
+  await page.goto("/mi-puesto");
+  await page.getByRole("link", { name: "Salir en vivo" }).click();
+  await expect(page.getByText("EN VIVO", { exact: true })).toBeVisible({ timeout: 30_000 });
+  await terminarDesdeLaPantalla(page);
+  await page.getByRole("link", { name: "Volver a mi puesto" }).click();
+  await expect(page.getByRole("link", { name: "Salir en vivo" })).toBeVisible();
+  await page.goBack();
+  // Con "atrás" muestra la cámara con el botón: nadie sale al aire sin querer.
+  await expect(page.getByText("Vista previa · nadie te ve todavía")).toBeVisible({ timeout: 30_000 });
   await expect(page.getByRole("button", { name: "Salir en vivo" })).toBeEnabled({ timeout: 30_000 });
+  await page.waitForTimeout(2_000);
+  expect((await vivosDe(tienda.id)).filter((v) => v.ended_at === null)).toHaveLength(0);
   await cambiarVisibilidad(page, "hidden");
   await cambiarVisibilidad(page, "visible");
   await page.getByRole("button", { name: "Salir en vivo" }).click();
@@ -135,6 +171,8 @@ test("terminar con confirmación", async ({ page, context }) => {
   await entrarYSalirEnVivo(page);
   await page.getByRole("button", { name: "Terminar" }).click();
   await expect(page.getByText("¿Seguro que querés terminar el vivo?")).toBeVisible();
+  // El consejo de arranque no tapa la confirmación.
+  await expect(page.getByText("Mientras estés en vivo no salgas de esta pantalla")).toHaveCount(0);
   // El foco va a la opción segura: un toque sin querer no corta el vivo.
   await expect(page.getByRole("button", { name: "Seguir en vivo" })).toBeFocused();
   await page.getByRole("button", { name: "Sí, terminar" }).click();
@@ -150,18 +188,12 @@ test("después de terminar, vuelve a Mi puesto y puede salir en vivo otra vez", 
   await context.addCookies(await cookiesDeSesion(mica.sesion));
   await page.goto("/mi-puesto");
   await page.getByRole("link", { name: "Salir en vivo" }).click();
-  await expect(page.getByText("Vista previa · nadie te ve todavía")).toBeVisible({ timeout: 30_000 });
-  await page.getByRole("button", { name: "Salir en vivo" }).click();
   await expect(page.getByText("EN VIVO", { exact: true })).toBeVisible({ timeout: 30_000 });
-  await page.getByRole("button", { name: "Terminar" }).click();
-  await page.getByRole("button", { name: "Sí, terminar" }).click();
-  await expect(page.getByText("¡Terminó tu vivo! 🎉")).toBeVisible({ timeout: 30_000 });
+  await terminarDesdeLaPantalla(page);
   await page.getByRole("link", { name: "Volver a mi puesto" }).click();
   await page.getByRole("link", { name: "Salir en vivo" }).click();
-  await expect(page.getByText("Vista previa · nadie te ve todavía")).toBeVisible({ timeout: 30_000 });
-  await expect(page.getByText("¡Terminó tu vivo! 🎉")).toHaveCount(0);
-  await page.getByRole("button", { name: "Salir en vivo" }).click();
   await expect(page.getByText("EN VIVO", { exact: true })).toBeVisible({ timeout: 30_000 });
+  await expect(page.getByText("¡Terminó tu vivo! 🎉")).toHaveCount(0);
   await expect.poll(async () => (await vivosDe(tienda.id)).filter((v) => v.ended_at === null).length).toBe(1);
 });
 
@@ -172,8 +204,7 @@ test("volver a tu vivo", async ({ page, context }) => {
   await context.addCookies(await cookiesDeSesion(mica.sesion));
   await page.goto("/mi-puesto");
   await page.getByRole("link", { name: "Volver a tu vivo" }).click();
-  await expect(page.getByText("Vista previa · tu vivo sigue abierto")).toBeVisible({ timeout: 30_000 });
-  await page.getByRole("button", { name: "Salir en vivo" }).click();
+  // Sigue el mismo vivo con un solo toque.
   await expect(page.getByText("EN VIVO", { exact: true })).toBeVisible({ timeout: 30_000 });
   const vivos = await vivosDe(tienda.id);
   expect(vivos).toHaveLength(1);
@@ -210,8 +241,6 @@ test("cerrado por falta de señal ofrece salir de nuevo", async ({ page, context
   if (error) throw error;
   await expect(page.getByText("Tu vivo terminó porque estuviste afuera mucho tiempo")).toBeVisible({ timeout: 30_000 });
   await page.getByRole("button", { name: "Salir en vivo de nuevo" }).click();
-  await expect(page.getByText("Vista previa · nadie te ve todavía")).toBeVisible({ timeout: 30_000 });
-  await page.getByRole("button", { name: "Salir en vivo" }).click();
   await expect(page.getByText("EN VIVO", { exact: true })).toBeVisible({ timeout: 30_000 });
   await expect.poll(async () => (await vivosDe(tienda.id)).filter((v) => v.ended_at === null).length).toBe(1);
 });

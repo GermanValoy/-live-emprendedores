@@ -106,7 +106,8 @@ function Sala({ tienda, productos, vivoInicial, config, siguiendo, conSesion }: 
       {estado === "vuelve-pronto" && <Cartel>{tienda.name} vuelve en un momento</Cartel>}
       {estado === "reconectando-feriante" && <Cartel>{tienda.name} se está reconectando</Cartel>}
 
-      {abierto && sinSonido && (
+      {/* Con la feriante silenciada no hay sonido para activar: el botón aparece cuando ella vuelve a hablar. */}
+      {abierto && sinSonido && !vivo?.muted && (
         <button
           type="button"
           onClick={activarSonido}

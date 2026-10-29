@@ -17,7 +17,14 @@ export type Reproductor = {
   cerrar(): void;
 };
 
+/** Un segundo suelto sin cuadros nuevos pasa seguido; recién al segundo seguido se avisa "reconectando". */
+const SEGUNDOS_QUIETA_PARA_AVISAR = 2;
 const SEGUNDOS_CONGELADO_PARA_RECONECTAR = 5;
+/**
+ * Una conexión que todavía no mostró imagen tiene más margen: el primer cuadro tarda en llegar.
+ * Pasa también cuando la feriante se cortó: Cloudflare acepta la conexión pero no manda nada.
+ */
+const SEGUNDOS_SIN_IMAGEN_PARA_RECONECTAR = 10;
 
 /**
  * Intenta reproducir con sonido. Si el navegador no lo deja sin un toque de la persona,
@@ -46,7 +53,9 @@ export function crearReproductor(
   let generacion = 0;
   let reconexionPendiente = false;
   let intento = 0;
+  // Ya se vio imagen alguna vez (desde ahí, sin imagen se avisa "reconectando") y en la conexión actual.
   let yaConecto = false;
+  let conImagen = false;
   let ultimosCuadros: number | null = null;
   let segundosCongelado = 0;
   let avisoSinSonido = false;
@@ -82,23 +91,20 @@ export function crearReproductor(
       const nueva = await mirar(urlMirar);
       if (!activo || mio !== generacion) { await nueva.cerrar(); return; }
       conexion = nueva;
+      conImagen = false;
       ultimosCuadros = null;
       segundosCongelado = 0;
       ponerVideo(nueva.stream);
+      // "Conectada" no alcanza para decir "reproduciendo": eso lo dice el reloj cuando la imagen avanza.
       const alCambiar = () => {
         if (conexion !== nueva) return;
         const s = nueva.pc.connectionState;
-        if (s === "connected") {
-          intento = 0;
-          yaConecto = true;
-          cambiarEstado("reproduciendo");
-        } else if (s === "disconnected" || s === "failed") {
+        if (s === "disconnected" || s === "failed") {
           cambiarEstado("reconectando");
           if (s === "failed") void reconectar();
         }
       };
       nueva.pc.addEventListener("connectionstatechange", alCambiar);
-      if (nueva.pc.connectionState === "connected") alCambiar();
     } catch {
       if (mio === generacion) void reconectar();
     }
@@ -119,7 +125,8 @@ export function crearReproductor(
     }, esperaReconexion(intento++));
   }
 
-  // Cada segundo: si la imagen no avanza durante unos segundos, se vuelve a pedir la transmisión.
+  // Cada segundo: si la imagen avanza, se está reproduciendo; si no avanza durante unos segundos
+  // (o nunca llegó), se vuelve a pedir la transmisión.
   const reloj = setInterval(async () => {
     const actual = conexion;
     if (enPausa || !actual || actual.pc.connectionState !== "connected") return;
@@ -130,14 +137,19 @@ export function crearReproductor(
       return;
     }
     if (enPausa || conexion !== actual) return;
-    const { cuadros } = leerMuestra(reporte.values() as Iterable<Record<string, unknown>>, "mirar");
-    if (cuadros === null) return;
-    if (ultimosCuadros !== null && cuadros === ultimosCuadros) {
-      cambiarEstado("reconectando");
-      if (++segundosCongelado >= SEGUNDOS_CONGELADO_PARA_RECONECTAR) void reconectar();
-    } else if (ultimosCuadros !== null && (segundosCongelado > 0 || estadoAvisado === "reconectando")) {
+    // Sin cuadros todavía cuenta como imagen quieta: la conexión puede estar lista sin que llegue nada.
+    const cuadros = leerMuestra(reporte.values() as Iterable<Record<string, unknown>>, "mirar").cuadros ?? 0;
+    if (ultimosCuadros !== null && cuadros > ultimosCuadros) {
       segundosCongelado = 0;
-      cambiarEstado("reproduciendo");
+      intento = 0;
+      yaConecto = true;
+      conImagen = true;
+      if (estadoAvisado !== "reproduciendo") cambiarEstado("reproduciendo");
+    } else if (ultimosCuadros !== null) {
+      segundosCongelado++;
+      if (yaConecto && segundosCongelado >= SEGUNDOS_QUIETA_PARA_AVISAR) cambiarEstado("reconectando");
+      const limite = conImagen ? SEGUNDOS_CONGELADO_PARA_RECONECTAR : SEGUNDOS_SIN_IMAGEN_PARA_RECONECTAR;
+      if (segundosCongelado >= limite) void reconectar();
     }
     ultimosCuadros = cuadros;
   }, 1000);

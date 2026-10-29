@@ -166,6 +166,55 @@ describe("crearSenal", () => {
     senal.detener();
   });
 
+  it("manda de a una: si hay una en camino, la siguiente espera y sale con el estado más nuevo", async () => {
+    // Si dos señales viajan juntas, el servidor puede recibir primero la nueva y quedarse con la vieja.
+    const pendientes: ((r: Response) => void)[] = [];
+    const llamadas: RequestInit[] = [];
+    const f = (async (_url: string, init?: RequestInit) => {
+      llamadas.push(init!);
+      return new Promise<Response>((ok) => pendientes.push(ok));
+    }) as unknown as typeof fetch;
+    const senal = crearSenal({
+      vivoId: VIVO, dispositivo: DISPOSITIVO, cadaSegundos: 20, leer: () => datos, alResultado: vi.fn(), f, renovarSesion: async () => {},
+    });
+    senal.avisarAhora();
+    datos = { ...datos, fuera: true };
+    senal.avisarAhora();
+    datos = { ...datos, silenciada: true };
+    senal.avisarAhora();
+    await vi.advanceTimersByTimeAsync(0);
+    expect(llamadas).toHaveLength(1);
+
+    pendientes[0]!(json({ resultado: "ok" }));
+    await vi.advanceTimersByTimeAsync(0);
+    // Las dos que esperaban salen como una sola, con lo último.
+    expect(llamadas).toHaveLength(2);
+    expect(JSON.parse(String(llamadas[1]!.body))).toMatchObject({ fuera: true, silenciada: true });
+    pendientes[1]!(json({ resultado: "ok" }));
+    await vi.advanceTimersByTimeAsync(0);
+    expect(llamadas).toHaveLength(2);
+    senal.detener();
+  });
+
+  it("una señal que no responde se abandona a tiempo y no frena las siguientes", async () => {
+    const llamadas: RequestInit[] = [];
+    const f = (async (_url: string, init?: RequestInit) => {
+      llamadas.push(init!);
+      if (llamadas.length > 1) return json({ resultado: "ok" });
+      // La primera queda colgada hasta que se la cancela.
+      return new Promise<Response>((_ok, mal) => init?.signal?.addEventListener("abort", () => mal(init.signal!.reason)));
+    }) as unknown as typeof fetch;
+    const alResultado = vi.fn();
+    const senal = crearSenal({
+      vivoId: VIVO, dispositivo: DISPOSITIVO, cadaSegundos: 20, leer: () => datos, alResultado, f, renovarSesion: async () => {},
+    });
+    senal.avisarAhora();
+    await vi.advanceTimersByTimeAsync(40_000);
+    expect(llamadas.length).toBeGreaterThanOrEqual(2);
+    expect(alResultado).toHaveBeenCalledWith("ok");
+    senal.detener();
+  });
+
   it("después de detener no manda ni avisa nada", async () => {
     const { senal, llamadas, alResultado } = armar(() => json({ resultado: "terminado" }));
     senal.avisarAhora();

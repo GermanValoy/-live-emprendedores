@@ -26,6 +26,9 @@ export function crearSenal(op: {
   const f = op.f ?? ((...args: Parameters<typeof fetch>) => fetch(...args));
   let activa = true;
   let seguidos401 = 0;
+  // De a una: si dos viajan juntas, el servidor puede recibir primero la nueva y quedarse con la vieja.
+  let enCamino = false;
+  let otraPendiente = false;
 
   const detener = () => {
     activa = false;
@@ -51,7 +54,16 @@ export function crearSenal(op: {
 
   async function enviar() {
     if (!activa) return;
-    let resultado: ResultadoSenal | null;
+    if (enCamino) {
+      // Sale cuando vuelva la que está en camino, con los datos de ese momento.
+      otraPendiente = true;
+      return;
+    }
+    enCamino = true;
+    let resultado: ResultadoSenal | null = null;
+    // Una que no responde se abandona antes de la próxima, así no frena a las demás.
+    const corte = new AbortController();
+    const plazo = setTimeout(() => corte.abort(), op.cadaSegundos * 1000);
     try {
       const respuesta = await f(RUTA, {
         method: "POST",
@@ -59,14 +71,23 @@ export function crearSenal(op: {
         body: JSON.stringify({ vivoId: op.vivoId, dispositivo: op.dispositivo, ...op.leer() }),
         // Para que la señal salga aunque la página se esté cerrando o pasando a segundo plano.
         keepalive: true,
+        signal: corte.signal,
       });
       resultado = await interpretar(respuesta);
     } catch {
-      return; // Sin conexión: se vuelve a intentar en la próxima.
+      // Sin conexión: se vuelve a intentar en la próxima.
+    } finally {
+      clearTimeout(plazo);
+      enCamino = false;
     }
-    if (!activa || resultado === null) return;
-    if (resultado !== "ok") detener();
-    op.alResultado(resultado);
+    if (activa && resultado !== null) {
+      if (resultado !== "ok") detener();
+      op.alResultado(resultado);
+    }
+    if (activa && otraPendiente) {
+      otraPendiente = false;
+      void enviar();
+    }
   }
 
   const reloj = setInterval(() => void enviar(), op.cadaSegundos * 1000);

@@ -106,12 +106,23 @@ test("terminó", async ({ page }) => {
   await expect.poll(() => pedidosMirar, { timeout: 15_000 }).toBeGreaterThan(0);
   const { error } = await mica.cliente.rpc("terminar_vivo", { p_vivo: v.vivo });
   if (error) throw error;
-  await expect(page.getByText("El vivo terminó. Gracias por acompañar a Mica.")).toBeVisible({ timeout: 30_000 });
+  // Vuelve la feria de la espera, con el agradecimiento, sus productos y el link a la tienda.
+  await expect(page.getByText("El vivo terminó", { exact: true })).toBeVisible({ timeout: 30_000 });
+  await expect(page.getByRole("heading", { name: "¡Gracias por venir!" })).toBeVisible();
+  await expect(page.getByText("Cuando Mica vuelva a salir en vivo, se abre sola acá.")).toBeVisible();
+  await expect(page.getByText("Suele estar en vivo martes y jueves a las 21")).toBeVisible();
+  await expect(page.getByText("$8.000")).toBeVisible();
+  await expect(page.getByText("EN VIVO", EN_VIVO)).toHaveCount(0);
   await expect(page.getByRole("link", { name: "Ver su tienda" })).toHaveAttribute("href", `/@${tienda.handle}`);
   // Al terminar se cierra el reproductor: no vuelve a pedir la transmisión (los reintentos son cada 10 s como mucho).
   const alTerminar = pedidosMirar;
   await page.waitForTimeout(11_000);
   expect(pedidosMirar).toBe(alTerminar);
+
+  // Si vuelve a salir en vivo, la sala se abre sola desde la espera de después.
+  await abrirVivo(mica, tienda);
+  await expect(page.getByText("EN VIVO", EN_VIVO)).toBeVisible({ timeout: 30_000 });
+  await expect(page.getByText("El vivo terminó", { exact: true })).toHaveCount(0);
 });
 
 test("volver a la sala por los links después de un vivo terminado muestra el vivo nuevo, no el cierre viejo", async ({ page }) => {
@@ -121,7 +132,7 @@ test("volver a la sala por los links después de un vivo terminado muestra el vi
   await expect(page.getByText("EN VIVO", EN_VIVO)).toBeVisible();
   const { error } = await mica.cliente.rpc("terminar_vivo", { p_vivo: v1.vivo });
   if (error) throw error;
-  await expect(page.getByText("El vivo terminó. Gracias por acompañar a Mica.")).toBeVisible({ timeout: 30_000 });
+  await expect(page.getByText("El vivo terminó", { exact: true })).toBeVisible({ timeout: 30_000 });
 
   // Como la compradora: a la tienda y al Inicio por los links, sin recargar (Next guarda la sala escondida).
   await page.getByRole("link", { name: "Ver su tienda" }).click();

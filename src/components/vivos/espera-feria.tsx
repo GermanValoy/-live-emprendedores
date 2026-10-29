@@ -1,5 +1,8 @@
-const LINEA_1 = "¡Pronto";
-const LINEA_2 = "arrancamos!";
+// Los textos de antes del vivo y de después de que terminó (la escena es la misma).
+const TEXTOS = {
+  antes: { linea1: "¡Pronto", linea2: "arrancamos!", cartel: "Abrimos el puesto en un ratito" },
+  despues: { linea1: "¡Gracias", linea2: "por venir!", cartel: "El vivo terminó" },
+} as const;
 
 // Posición de cada lamparita sobre la guirnalda (izquierda en %, altura en px).
 const LAMPARAS = [
@@ -26,8 +29,12 @@ function Letras({ texto, desde }: { texto: string; desde: number }) {
   );
 }
 
-/** Espera del vivo: el puesto de feria con toldo, guirnalda y mostrador. Solo CSS. */
-export function EsperaFeria({ nombre }: { nombre: string }) {
+/**
+ * Espera del vivo: el puesto de feria con toldo, guirnalda y mostrador. Solo CSS.
+ * `termino`: el vivo recién terminó; se agradece y se sigue esperando el próximo.
+ */
+export function EsperaFeria({ nombre, termino = false }: { nombre: string; termino?: boolean }) {
+  const t = TEXTOS[termino ? "despues" : "antes"];
   return (
     <div className="espera-escena">
       <div className="espera-toldo" data-testid="toldo" aria-hidden="true">
@@ -53,18 +60,23 @@ export function EsperaFeria({ nombre }: { nombre: string }) {
 
       <div className="espera-centro">
         <h2 className="espera-titulo">
-          <span className="sr-only">¡Pronto arrancamos!</span>
+          <span className="sr-only">{`${t.linea1} ${t.linea2}`}</span>
           <span aria-hidden="true" className="block">
-            <Letras texto={LINEA_1} desde={0} />
+            <Letras texto={t.linea1} desde={0} />
           </span>
           <span aria-hidden="true" className="block text-[1.25rem]">
-            <Letras texto={LINEA_2} desde={0.4} />
+            <Letras texto={t.linea2} desde={0.4} />
           </span>
         </h2>
-        <p className="espera-cartel">Abrimos el puesto en un ratito</p>
+        {/* Al terminar se anuncia (lectores de pantalla): el cambio llega sin que la persona toque nada. */}
+        <p className="espera-cartel" role={termino ? "status" : undefined}>{t.cartel}</p>
       </div>
 
-      <p className="espera-pie">Quedate acá: cuando {nombre} salga en vivo, se abre sola.</p>
+      <p className="espera-pie">
+        {termino
+          ? `Cuando ${nombre} vuelva a salir en vivo, se abre sola acá.`
+          : `Quedate acá: cuando ${nombre} salga en vivo, se abre sola.`}
+      </p>
     </div>
   );
 }

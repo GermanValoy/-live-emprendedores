@@ -21,7 +21,7 @@ type Props = {
   conSesion: boolean;
 };
 
-/** La sala de la compradora: espera animada, el vivo a pantalla completa y el cierre. Siempre oscura. */
+/** La sala de la compradora: espera animada, el vivo a pantalla completa y, al terminar, otra vez la espera. Siempre oscura. */
 export function SalaVivo(props: Props) {
   // Next no cierra la pantalla al navegar: la esconde y al volver la muestra como quedó (Activity).
   // La sala arranca de cero en cada visita, como recién cargada: sin el cierre del vivo anterior ni su reproductor.
@@ -50,9 +50,10 @@ function Sala({ tienda, productos, vivoInicial, config, siguiendo, conSesion }: 
         </>
       )}
 
-      {estado === "esperando" && (
+      {/* Antes del vivo y después de que terminó, la misma feria: casi nunca vuelve a salir enseguida. */}
+      {(estado === "esperando" || estado === "terminado") && (
         <div className="absolute inset-0 overflow-y-auto pt-[calc(max(env(safe-area-inset-top),0.5rem)+3.75rem)] pb-[max(env(safe-area-inset-bottom),1.5rem)]">
-          <EsperaFeria nombre={tienda.name} />
+          <EsperaFeria nombre={tienda.name} termino={estado === "terminado"} />
           <div className="flex flex-col gap-4 px-4 pt-5">
             {tienda.live_schedule_note && (
               <p className="rounded-2xl bg-white/10 px-4 py-3 text-sm text-pretty wrap-anywhere">
@@ -80,6 +81,14 @@ function Sala({ tienda, productos, vivoInicial, config, siguiendo, conSesion }: 
                   ))}
                 </ul>
               </section>
+            )}
+            {estado === "terminado" && (
+              <Link
+                href={linkTienda}
+                className="flex h-14 w-full items-center justify-center rounded-full bg-white text-base font-extrabold text-primary outline-none focus-visible:ring-3 focus-visible:ring-white/70"
+              >
+                Ver su tienda
+              </Link>
             )}
           </div>
         </div>
@@ -117,19 +126,6 @@ function Sala({ tienda, productos, vivoInicial, config, siguiendo, conSesion }: 
         </button>
       )}
 
-      {estado === "terminado" && (
-        <section role="status" className="absolute inset-0 flex flex-col items-center justify-center gap-6 overflow-y-auto bg-black px-6 py-24 text-center">
-          <p className="max-w-sm text-2xl leading-tight font-extrabold text-balance wrap-anywhere">
-            El vivo terminó. Gracias por acompañar a {tienda.name}.
-          </p>
-          <Link
-            href={linkTienda}
-            className="flex h-14 w-full max-w-sm items-center justify-center rounded-full bg-white text-base font-extrabold text-primary outline-none focus-visible:ring-3 focus-visible:ring-white/70"
-          >
-            Ver su tienda
-          </Link>
-        </section>
-      )}
     </main>
   );
 }

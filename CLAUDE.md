@@ -165,7 +165,6 @@ Programar los pagos como un **módulo intercambiable** (`lib/payments/` con una 
 - Si la compradora entra a un vivo que ya perdió la señal, el aviso "se está reconectando" tarda hasta 40 s en aparecer.
 - Idea del dueño (2026-10-29): en "vuelve en un momento" y "se está reconectando", en vez de solo el cartel de texto, mostrar una animación o un indicador de carga con la portada o la foto del puesto.
 - Idea del dueño (2026-10-29): programar vivos (ya está en la Fase 2 como "vivos programados").
-- Borrar los 2 administradores temporales de `platform_admins` al terminar la prueba en celulares.
 
 - Agentes de IA como moderadores del chat y asistentes de la vendedora.
 - Más seguridad para emprendedoras y compradoras (verificación de identidad de la vendedora, reputación pública, denuncias).

@@ -134,7 +134,7 @@ Programar los pagos como un **módulo intercambiable** (`lib/payments/` con una 
 
 ## 10. Plan por fases
 
-**Estado (2026-10-28)**: Fase 0 publicada · Fase 1: Parte 0 (pantallas) y Parte 1 (tiendas y productos) publicadas en `tuferialive.vercel.app` · **Parte 2 (sala en vivo) construida** en la rama `fase-1-parte-2-sala`; faltan la revisión final, publicarla y la prueba en celulares reales (iPhone y Android).
+**Estado (2026-10-30)**: Fase 0 publicada · Fase 1: Parte 0 (pantallas), Parte 1 (tiendas y productos) y **Parte 2 (sala en vivo)** publicadas en `tuferialive.vercel.app` (la Parte 2, probada en celulares reales Android e iPhone el 2026-10-29). Lo siguiente: Parte 3 (chat).
 
 **Fase 0 – Bases**: proyecto Next.js + Supabase + Drizzle, sistema de diseño (colores, tipografía, componentes base), login, estructura de carpetas, CI con tests, deploy en Vercel.
 
@@ -164,7 +164,7 @@ Programar los pagos como un **módulo intercambiable** (`lib/payments/` con una 
 - La portada y la sala reciben cada cambio de todos los vivos (optimizar cuando haya muchos).
 - Si la compradora entra a un vivo que ya perdió la señal, el aviso "se está reconectando" tarda hasta 40 s en aparecer.
 - Idea del dueño (2026-10-29): en "vuelve en un momento" y "se está reconectando", en vez de solo el cartel de texto, mostrar una animación o un indicador de carga con la portada o la foto del puesto.
-- Borrar la transmisión `prueba-vivo` en Cloudflare (la borra el dueño a mano; sacar esta línea cuando esté hecho).
+- Idea del dueño (2026-10-29): programar vivos (ya está en la Fase 2 como "vivos programados").
 - Borrar los 2 administradores temporales de `platform_admins` al terminar la prueba en celulares.
 
 - Agentes de IA como moderadores del chat y asistentes de la vendedora.

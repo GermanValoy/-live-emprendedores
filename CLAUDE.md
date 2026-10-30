@@ -122,7 +122,7 @@ Programar los pagos como un **módulo intercambiable** (`lib/payments/` con una 
 ## 9. Seguridad (no negociable)
 
 - Secretos solo en variables de entorno; `.env.local` en `.gitignore`.
-- `SUPABASE_SECRET_KEY` y tokens de Cloudflare: **solo en el servidor**, nunca en código de cliente.
+- `SUPABASE_SECRET_KEY` y tokens de Cloudflare: **solo en el servidor**, nunca en código de cliente. Los archivos que los leen llevan `import "server-only"`, y nunca se les pone el prefijo `NEXT_PUBLIC_` (lo que lo lleva va al navegador). La prueba `tests/e2e/claves.spec.ts` revisa en cada cambio que ninguna clave secreta aparezca en lo que recibe el navegador.
 - Comprobantes de pago en bucket privado con URLs firmadas de corta duración.
 - Rate limiting en chat y reclamos de códigos.
 - Para reclamar un código hay que tener sesión iniciada; mirar y comentar puede ser libre.

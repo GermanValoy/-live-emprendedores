@@ -22,6 +22,25 @@ describe("chat", () => {
     return data ?? [];
   };
 
+  const SONDA = "sonda ";
+  const esperarQueLlegue = async (recibidos: string[], texto: string, ms = 10_000) => {
+    const limite = Date.now() + ms;
+    while (!recibidos.includes(texto) && Date.now() < limite) await new Promise((r) => setTimeout(r, 100));
+    if (!recibidos.includes(texto)) throw new Error(`"${texto}" no llegó por tiempo real en ${ms / 1000} s`);
+  };
+  /** En vez de esperar un tiempo fijo, la feriante manda mensajes de sonda hasta que uno llega:
+   *  recién ahí el canal está escuchando de verdad (en CI a veces tarda varios segundos). */
+  const esperarCanalListo = async (recibidos: string[]) => {
+    for (let i = 1; i <= 5; i++) {
+      const r = await publicarPrueba(mica.id, vivo, `${SONDA}${i}`);
+      if (r.estado !== "ok") throw new Error(`La sonda no se publicó: ${JSON.stringify(r)}`);
+      const limite = Date.now() + 2500;
+      while (!recibidos.includes(`${SONDA}${i}`) && Date.now() < limite) await new Promise((x) => setTimeout(x, 100));
+      if (recibidos.includes(`${SONDA}${i}`)) return;
+    }
+    throw new Error("El canal de tiempo real no recibió ninguna sonda en 12 s");
+  };
+
   beforeAll(async () => {
     [admin, mica, caro, luz] = await Promise.all([
       crearUsuarioPrueba({ nombre: "Admin Chat" }),
@@ -217,18 +236,16 @@ describe("chat", () => {
         });
     });
     try {
-      await new Promise((r) => setTimeout(r, 1000)); // margen para que el filtro quede activo en el servidor
+      await esperarCanalListo(recibidos);
       await publicarPrueba(caro.id, vivo, "escondido www.x.com", "link");
-      await publicarPrueba(luz.id, vivo, "se ve");
-      const limite = Date.now() + 8000;
-      while (!recibidos.includes("se ve") && Date.now() < limite) await new Promise((r) => setTimeout(r, 100));
-      if (!recibidos.includes("se ve")) throw new Error("El mensaje visible no llegó por tiempo real en 8 s");
+      expect((await publicarPrueba(luz.id, vivo, "se ve")).estado).toBe("ok");
+      await esperarQueLlegue(recibidos, "se ve");
       await new Promise((r) => setTimeout(r, 500)); // por si el oculto llegara tarde
-      expect(recibidos).toEqual(["se ve"]);
+      expect(recibidos.filter((b) => !b.startsWith(SONDA))).toEqual(["se ve"]);
     } finally {
       await visitante.removeChannel(canal);
     }
-  }, 15_000);
+  }, 40_000);
 
   it("tiempo real: una compradora con sesión no recibe el mensaje escondido de otra", async () => {
     const recibidos: string[] = [];
@@ -243,18 +260,16 @@ describe("chat", () => {
         });
     });
     try {
-      await new Promise((r) => setTimeout(r, 1000)); // margen para que el filtro quede activo en el servidor
+      await esperarCanalListo(recibidos);
       await publicarPrueba(caro.id, vivo, "escondido de caro www.x.com", "link");
-      await publicarPrueba(mica.id, vivo, "visible para luz");
-      const limite = Date.now() + 8000;
-      while (!recibidos.includes("visible para luz") && Date.now() < limite) await new Promise((r) => setTimeout(r, 100));
-      if (!recibidos.includes("visible para luz")) throw new Error("El mensaje visible no llegó por tiempo real en 8 s");
+      expect((await publicarPrueba(admin.id, vivo, "visible para luz")).estado).toBe("ok");
+      await esperarQueLlegue(recibidos, "visible para luz");
       await new Promise((r) => setTimeout(r, 500)); // por si el oculto llegara tarde
-      expect(recibidos).toEqual(["visible para luz"]);
+      expect(recibidos.filter((b) => !b.startsWith(SONDA))).toEqual(["visible para luz"]);
     } finally {
       await luz.cliente.removeChannel(canal);
     }
-  }, 15_000);
+  }, 40_000);
 
   describe("moderación", () => {
     const rpc = (u: UsuarioPrueba, fn: string, args: Record<string, unknown>) => u.cliente.rpc(fn, args);

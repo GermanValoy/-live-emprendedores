@@ -40,7 +40,7 @@ export function useChat(
   userId: string | null,
 ) {
   const [supabase] = useState(createClient);
-  const [mensajes, setMensajes] = useState<ItemChat[]>(() => juntar([], inicial));
+  const [mensajes, setMensajes] = useState<ItemChat[]>(() => juntar([], inicial.filter((m) => m.live_session_id === vivo?.id)));
   const [silencio, setSilencio] = useState<SilencioChat>(silencioInicial);
   const [aviso, setAviso] = useState<string | null>(null);
   const [canalListo, setCanalListo] = useState(false);

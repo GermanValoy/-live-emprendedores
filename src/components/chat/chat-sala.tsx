@@ -48,7 +48,7 @@ export function ChatSala({ vivo, inicial, silencioInicial, config, userId, handl
   };
 
   return (
-    <div data-chat={canalListo ? "listo" : "conectando"} className="absolute inset-x-0 bottom-0 z-10 flex flex-col gap-2 px-3 pb-[max(env(safe-area-inset-bottom),0.75rem)]">
+    <div data-chat={canalListo ? "listo" : "conectando"} className="pointer-events-none absolute inset-x-0 bottom-0 z-10 flex flex-col gap-2 px-3 pb-[max(env(safe-area-inset-bottom),0.75rem)]">
       {visible && (
         <ul
           ref={lista}
@@ -68,12 +68,12 @@ export function ChatSala({ vivo, inicial, silencioInicial, config, userId, handl
       )}
 
       {aviso && (
-        <p role="status" className="w-fit rounded-full bg-black/65 px-4 py-2 text-sm font-bold backdrop-blur">
+        <p role="status" className="pointer-events-auto w-fit rounded-full bg-black/65 px-4 py-2 text-sm font-bold backdrop-blur">
           {aviso}
         </p>
       )}
 
-      <div className="flex items-center gap-2">
+      <div className="pointer-events-auto flex items-center gap-2">
         {visible && (
           <div className="min-w-0 flex-1">
             {!userId ? (

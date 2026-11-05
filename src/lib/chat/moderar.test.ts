@@ -1,15 +1,17 @@
 import { describe, expect, it } from "vitest";
 import { largoVisible, limpiarTexto, moderar, normalizar } from "./moderar";
 
-// Entradas copiadas de la lista inicial de drizzle/0008_seguridad_chat.sql.
+// Espeja la lista de la base: drizzle/0008_seguridad_chat.sql menos lo que borra
+// drizzle/0012_chat_palabras_ajuste.sql (palabras que aparecen en ventas normales).
 const PALABRAS: ReadonlySet<string> = new Set([
-  "pelotudo",
-  "boludo",
-  "hijo de puta",
-  "la concha de tu madre",
-  "puta",
-  "gil",
-  "mierda",
+  "boludo", "boluda", "pelotudo", "pelotuda", "forro", "forra", "hijo de puta", "hijadeputa",
+  "hdp", "puta", "puto", "mierda", "conchudo", "conchuda", "la concha de tu madre",
+  "culiado", "culiada", "pija", "verga", "chupapija", "garca", "imbecil", "idiota",
+  "estupido", "estupida", "mogolico", "mogolica", "trolo", "trola",
+  "sorete", "cagon", "cagona", "mamarracho",
+  "tarado", "tarada", "zorra",
+  "cornudo", "hijo de mil puta", "andate a la mierda", "chupame", "chupamela", "ortiva", "ortiba",
+  "cabeza de termo", "pajero", "pajera", "maricon", "negro de mierda", "villero de mierda",
 ]);
 
 // Mensajes normales de vivos reales: nunca se frenan.
@@ -41,6 +43,17 @@ const NUNCA_FRENAR = [
   "la computadora y la gilada del barrio",
   "talle 40 42 44 46",
   "$1.800.000",
+  // palabras de ventas normales que no son insulto
+  "¿mi pedido viene retrasado?",
+  "el envío viene retrasado",
+  "collar para perra",
+  "en color gris rata",
+  "bolsas de basura",
+  "un chorro de agua",
+  "soy Ana Gil",
+  "es inútil, no me anda",
+  "la concha del mate",
+  "no soy estafadora, mirá las reseñas",
 ];
 
 const SIEMPRE_FRENAR: [string, "link" | "promocion" | "insulto"][] = [

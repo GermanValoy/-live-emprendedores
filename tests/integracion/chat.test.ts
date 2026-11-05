@@ -230,6 +230,32 @@ describe("chat", () => {
     }
   }, 15_000);
 
+  it("tiempo real: una compradora con sesión no recibe el mensaje escondido de otra", async () => {
+    const recibidos: string[] = [];
+    const canal = luz.cliente.channel(`chat-luz-${vivo}`);
+    await new Promise<void>((ok, mal) => {
+      canal
+        .on("postgres_changes", { event: "INSERT", schema: "public", table: "chat_messages", filter: `live_session_id=eq.${vivo}` },
+          (p) => recibidos.push((p.new as { body: string }).body))
+        .subscribe((estado) => {
+          if (estado === "SUBSCRIBED") ok();
+          if (estado === "CHANNEL_ERROR" || estado === "TIMED_OUT") mal(new Error(estado));
+        });
+    });
+    try {
+      await new Promise((r) => setTimeout(r, 1000)); // margen para que el filtro quede activo en el servidor
+      await publicarPrueba(caro.id, vivo, "escondido de caro www.x.com", "link");
+      await publicarPrueba(mica.id, vivo, "visible para luz");
+      const limite = Date.now() + 8000;
+      while (!recibidos.includes("visible para luz") && Date.now() < limite) await new Promise((r) => setTimeout(r, 100));
+      if (!recibidos.includes("visible para luz")) throw new Error("El mensaje visible no llegó por tiempo real en 8 s");
+      await new Promise((r) => setTimeout(r, 500)); // por si el oculto llegara tarde
+      expect(recibidos).toEqual(["visible para luz"]);
+    } finally {
+      await luz.cliente.removeChannel(canal);
+    }
+  }, 15_000);
+
   describe("moderación", () => {
     const rpc = (u: UsuarioPrueba, fn: string, args: Record<string, unknown>) => u.cliente.rpc(fn, args);
     const silenciosDe = async (userId: string) => {
@@ -431,6 +457,32 @@ describe("chat", () => {
       const { data: acc } = await clienteAdmin().from("moderation_actions").select("id").eq("target_user_id", caro.id);
       expect(acc!.length).toBeGreaterThan(0); // su registro se conserva mientras siga silenciada
       await limpiarSilencios(caro.id);
+    });
+
+    it("el silencio de sala solo conserva los mensajes de esa sala", async () => {
+      await limpiarSilencios(caro.id);
+      const otra = await crearUsuarioPrueba({ nombre: "Otra Sala" });
+      const t2 = await crearTiendaPrueba(otra);
+      try {
+        await crearTransmisionPrueba(t2.id);
+        const { data: vivo2, error } = await otra.cliente.rpc("abrir_vivo", { p_store: t2.id, p_device: crypto.randomUUID() });
+        if (error) throw error;
+        const aqui = (await publicarPrueba(caro.id, vivo, "viejo aca")).mensaje as { id: string };
+        const alla = (await publicarPrueba(caro.id, vivo2 as string, "viejo alla")).mensaje as { id: string };
+        await rpc(mica, "silenciar_en_sala", { p_store: tienda.id, p_user: caro.id, p_tipo: "sala" });
+        const viejo = new Date(Date.now() - 31 * 86_400_000).toISOString();
+        await clienteAdmin().from("chat_messages").update({ created_at: viejo }).in("id", [aqui.id, alla.id]);
+        expect((await clienteAdmin().rpc("borrar_chat_viejo")).error).toBeNull();
+        const { data } = await clienteAdmin().from("chat_messages").select("id").in("id", [aqui.id, alla.id]);
+        const ids = (data ?? []).map((f) => f.id);
+        expect(ids).toContain(aqui.id); // en la sala que la silenció se conserva
+        expect(ids).not.toContain(alla.id); // en otra sala se borra
+      } finally {
+        await limpiarSilencios(caro.id);
+        await borrarChatDeTienda(t2.id);
+        await borrarVivosDeTienda(t2.id);
+        await borrarUsuarioPrueba(otra.id);
+      }
     });
   });
 });

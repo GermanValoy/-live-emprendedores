@@ -23,7 +23,7 @@ const AVISAR_DESDE_QUEDAN = 20;
 
 /** Chat de la feriante sobre su cámara. Tocar el mensaje de otra persona abre la moderación. */
 export function ChatEstudio({ vivo, inicial, config, userId, claseBase }: Props) {
-  const { mensajes, enviar, reintentar, aviso, canalListo } = useChat(vivo, inicial, null, userId);
+  const { mensajes, enviar, reintentar, silencio, aviso, canalListo } = useChat(vivo, inicial, null, userId);
   const [texto, setTexto] = useState("");
   const [moderando, setModerando] = useState<{ id: string; userId: string; nombre: string } | null>(null);
   const lista = useRef<HTMLUListElement>(null);
@@ -84,27 +84,33 @@ export function ChatEstudio({ vivo, inicial, config, userId, claseBase }: Props)
           </p>
         )}
 
-        <form onSubmit={alEnviar} className="pointer-events-auto flex items-center gap-2">
-          <div className="relative min-w-0 flex-1">
-            <input
-              value={texto}
-              onChange={(e) => setTexto([...e.target.value].slice(0, maximo).join(""))}
-              placeholder="Escribí un mensaje…"
-              aria-label="Mensaje"
-              autoComplete="off"
-              enterKeyHint="send"
-              className="h-11 w-full rounded-full bg-black/55 px-4 text-base text-white outline-none backdrop-blur placeholder:text-white/70 focus-visible:ring-3 focus-visible:ring-white/70"
-            />
-            {largo >= maximo - AVISAR_DESDE_QUEDAN && (
-              <span aria-live="polite" className="pointer-events-none absolute top-1/2 right-4 -translate-y-1/2 text-xs font-bold tabular-nums text-white/80">
-                {largo}/{maximo}
-              </span>
-            )}
-          </div>
-          <button type="submit" aria-label="Enviar" className="flex size-11 shrink-0 items-center justify-center rounded-full bg-white text-xl text-primary outline-none focus-visible:ring-3 focus-visible:ring-white/70">
-            <span aria-hidden="true">➤</span>
-          </button>
-        </form>
+        {silencio ? (
+          <p role="status" className="pointer-events-auto flex min-h-11 items-center rounded-full bg-black/55 px-4 text-sm font-bold backdrop-blur">
+            No podés escribir en esta sala.
+          </p>
+        ) : (
+          <form onSubmit={alEnviar} className="pointer-events-auto flex items-center gap-2">
+            <div className="relative min-w-0 flex-1">
+              <input
+                value={texto}
+                onChange={(e) => setTexto([...e.target.value].slice(0, maximo).join(""))}
+                placeholder="Escribí un mensaje…"
+                aria-label="Mensaje"
+                autoComplete="off"
+                enterKeyHint="send"
+                className="h-11 w-full rounded-full bg-black/55 px-4 text-base text-white outline-none backdrop-blur placeholder:text-white/70 focus-visible:ring-3 focus-visible:ring-white/70"
+              />
+              {largo >= maximo - AVISAR_DESDE_QUEDAN && (
+                <span aria-live="polite" className="pointer-events-none absolute top-1/2 right-4 -translate-y-1/2 text-xs font-bold tabular-nums text-white/80">
+                  {largo}/{maximo}
+                </span>
+              )}
+            </div>
+            <button type="submit" aria-label="Enviar" className="flex size-11 shrink-0 items-center justify-center rounded-full bg-white text-xl text-primary outline-none focus-visible:ring-3 focus-visible:ring-white/70">
+              <span aria-hidden="true">➤</span>
+            </button>
+          </form>
+        )}
       </div>
 
       {moderando && (

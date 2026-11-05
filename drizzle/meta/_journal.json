@@ -85,6 +85,13 @@
       "when": 1793850671385,
       "tag": "0011_moderacion_chat",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1793858129791,
+      "tag": "0012_chat_palabras_ajuste",
+      "breakpoints": true
     }
   ]
 }

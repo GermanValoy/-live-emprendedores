@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { enviarMensaje } from "@/app/tienda/[handle]/vivo/acciones";
 import { mensajesIniciales, miSilencio } from "@/lib/chat/datos";
+import { limpiarTexto } from "@/lib/chat/moderar";
 import type { MensajeChat, SilencioChat } from "@/lib/chat/tipos";
 import { alServidor } from "@/lib/red";
 import { createClient } from "@/lib/supabase/client";
@@ -70,7 +71,7 @@ export function useChat(
         // Mi propio mensaje puede llegar por el canal antes que la respuesta del envío: se saca el pendiente igual.
         let base = actual;
         if (m.user_id === userId) {
-          const k = actual.findIndex((x) => x.estado === "pendiente" && x.body === m.body);
+          const k = actual.findIndex((x) => x.estado === "pendiente" && limpiarTexto(x.body) === m.body);
           if (k >= 0) base = actual.filter((_, j) => j !== k);
         }
         if (base.some((i) => i.id === m.id)) return juntar(base.map((i) => (i.id === m.id ? { ...m, estado: "ok" as const } : i)), []);

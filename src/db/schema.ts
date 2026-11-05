@@ -151,3 +151,71 @@ export const liveSessions = pgTable(
     index("live_sessions_store_started_idx").on(t.storeId, t.startedAt.desc()),
   ],
 );
+
+// Chat (Fase 1, Parte 3). Reglas en drizzle/0008_seguridad_chat.sql.
+
+/** Fila única con los límites del chat. Se cambia por SQL; solo la lee el servidor. */
+export const chatConfig = pgTable("chat_config", {
+  id: integer("id").primaryKey(),
+  largoMaximo: integer("largo_maximo").notNull().default(200),
+  rafagaMensajes: integer("rafaga_mensajes").notNull().default(5),
+  rafagaSegundos: integer("rafaga_segundos").notNull().default(10),
+  repetidoSegundos: integer("repetido_segundos").notNull().default(60),
+  frenadosParaSilenciar: integer("frenados_para_silenciar").notNull().default(3),
+  frenadosVentanaSegundos: integer("frenados_ventana_segundos").notNull().default(600),
+  silencioSegundos: integer("silencio_segundos").notNull().default(600),
+  mensajesAlEntrar: integer("mensajes_al_entrar").notNull().default(50),
+  guardarDias: integer("guardar_dias").notNull().default(30),
+  salasParaRevisar: integer("salas_para_revisar").notNull().default(3),
+});
+
+/** Palabras que el moderador automático oculta (ya normalizadas: minúsculas, sin tildes). */
+export const chatBlockedWords = pgTable("chat_blocked_words", {
+  word: text("word").primaryKey(),
+});
+
+export const chatMessages = pgTable(
+  "chat_messages",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    liveSessionId: uuid("live_session_id").notNull().references(() => liveSessions.id, { onDelete: "cascade" }),
+    storeId: uuid("store_id").notNull().references(() => stores.id, { onDelete: "cascade" }),
+    userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+    authorName: text("author_name").notNull(),
+    body: text("body").notNull(),
+    normalized: text("normalized").notNull(),
+    isSeller: boolean("is_seller").notNull().default(false),
+    hiddenReason: text("hidden_reason"),
+    deletedAt: timestamp("deleted_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index("chat_messages_vivo_creado_idx").on(t.liveSessionId, t.createdAt),
+    index("chat_messages_usuario_puesto_creado_idx").on(t.userId, t.storeId, t.createdAt),
+  ],
+);
+
+export const chatSilences = pgTable("chat_silences", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  storeId: uuid("store_id").references(() => stores.id, { onDelete: "cascade" }),
+  userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  kind: text("kind").notNull(),
+  source: text("source").notNull(),
+  createdBy: uuid("created_by").references(() => users.id, { onDelete: "set null" }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  until: timestamp("until", { withTimezone: true }),
+  liftedAt: timestamp("lifted_at", { withTimezone: true }),
+  liftedBy: uuid("lifted_by").references(() => users.id, { onDelete: "set null" }),
+});
+
+export const moderationActions = pgTable("moderation_actions", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  storeId: uuid("store_id").references(() => stores.id, { onDelete: "cascade" }),
+  targetUserId: uuid("target_user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  actorId: uuid("actor_id").references(() => users.id, { onDelete: "set null" }),
+  actorKind: text("actor_kind").notNull(),
+  action: text("action").notNull(),
+  messageId: uuid("message_id").references(() => chatMessages.id, { onDelete: "set null" }),
+  messageBody: text("message_body"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});

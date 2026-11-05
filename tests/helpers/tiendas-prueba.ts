@@ -72,6 +72,33 @@ export async function borrarVivosDeTienda(storeId: string): Promise<void> {
   if (error) throw error;
 }
 
+export async function borrarChatDeTienda(storeId: string): Promise<void> {
+  const admin = clienteAdmin();
+  for (const tabla of ["moderation_actions", "chat_silences", "chat_messages"]) {
+    const { error } = await admin.from(tabla).delete().eq("store_id", storeId);
+    if (error) throw error;
+  }
+}
+
+/** Publica un mensaje como lo haría el servidor (con la clave de servicio). */
+export async function publicarPrueba(
+  userId: string,
+  vivoId: string,
+  texto: string,
+  motivo: string | null = null,
+): Promise<Record<string, unknown>> {
+  const { data, error } = await clienteAdmin().rpc("publicar_mensaje", {
+    p_user: userId,
+    p_vivo: vivoId,
+    p_nombre: "Prueba P.",
+    p_texto: texto,
+    p_normalizado: texto.toLowerCase().trim(),
+    p_motivo: motivo,
+  });
+  if (error) throw error;
+  return data as Record<string, unknown>;
+}
+
 export async function borrarFotosDeTienda(storeId: string): Promise<void> {
   const bucket = clienteAdmin().storage.from("tienda-fotos");
   for (const carpeta of ["perfil", "portada", "productos"]) {

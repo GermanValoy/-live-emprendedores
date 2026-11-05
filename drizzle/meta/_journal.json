@@ -50,6 +50,20 @@
       "when": 1793135881326,
       "tag": "0006_vivos_transmision_del_servidor",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1793848692512,
+      "tag": "0007_abnormal_cloak",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1793848729557,
+      "tag": "0008_seguridad_chat",
+      "breakpoints": true
     }
   ]
 }

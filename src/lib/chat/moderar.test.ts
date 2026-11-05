@@ -32,6 +32,12 @@ const NUNCA_FRENAR = [
   "Vñleta",
   "me lo reservás?",
   // cuidado con las palabras que contienen un insulto adentro
+  "Hola. Me encanta",
+  "gracias. me lo llevo",
+  "dale.me lo guardas",
+  "Listo. Co",
+  "si. App",
+  "ok. Ar",
   "la computadora y la gilada del barrio",
   "talle 40 42 44 46",
   "$1.800.000",

@@ -57,7 +57,10 @@ const REGLAS_LINK: RegExp[] = [
   /https?:\/\//,
   /\bwww\b/,
   /\bw\s*w\s*w\s*\./,
-  /[a-z0-9-]\s*\.\s*(?:com|net|org|ar|co|io|me|ly|shop|store|tienda|app|link|live|info|biz|site|online)\b/,
+  // TLD largos: se admite un espacio antes del punto ("ofertas .com"), nunca después.
+  /[a-z0-9-]\s*\.(?:com|net|org|shop|store|tienda|link|live|info|biz|site|online)\b/,
+  // TLD cortos (se confunden con una oración pegada, "dale.me lo guardas"): sin espacios y al final o con "/".
+  /[a-z0-9-]{2,}\.(?:ar|co|io|me|ly|app)(?:\/|[!?.,]*$)/,
   /\bpunto\s+(?:com|net|org|ar|co|io|me|ly|shop|store|tienda|app|link|live|info|biz|site|online)\b/,
   /\bdot\s+(?:com|net|org|ar|co|io|me|ly|shop|store|tienda|app|link|live|info|biz|site|online)\b/,
 ];

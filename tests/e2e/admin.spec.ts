@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { borrarUsuarioPrueba, clienteAdmin, crearUsuarioPrueba, type UsuarioPrueba } from "../helpers/usuario-prueba";
-import { borrarVivosDeTienda, crearTiendaPrueba, crearTransmisionPrueba, hacerAdmin } from "../helpers/tiendas-prueba";
+import { borrarChatDeTienda, borrarVivosDeTienda, crearTiendaPrueba, crearTransmisionPrueba, hacerAdmin, publicarPrueba } from "../helpers/tiendas-prueba";
 import { cookiesDeSesion } from "./sesion";
 
 let admin: UsuarioPrueba;
@@ -88,5 +88,56 @@ test("la admin corta un vivo", async ({ page, context }) => {
   } finally {
     await borrarVivosDeTienda(tienda.id);
     await borrarUsuarioPrueba(duena.id);
+  }
+});
+
+test("la admin revisa y silencia una cuenta", async ({ page, context }) => {
+  const caro = await crearUsuarioPrueba({ nombre: "Revisada Cuenta" });
+  const duenas: UsuarioPrueba[] = [];
+  const tiendas: { id: string }[] = [];
+  try {
+    for (let n = 1; n <= 3; n++) {
+      const d = await crearUsuarioPrueba({ nombre: `Duena Revision ${n}` });
+      duenas.push(d);
+      tiendas.push(await crearTiendaPrueba(d, { conProducto: true }));
+    }
+    await crearTransmisionPrueba(tiendas[0]!.id);
+    const { data: vivo, error } = await duenas[0]!.cliente.rpc("abrir_vivo", { p_store: tiendas[0]!.id, p_device: crypto.randomUUID() });
+    if (error) throw error;
+    await publicarPrueba(caro.id, vivo as string, "mirá www.ofertas.com", "link");
+    const normal = (await publicarPrueba(caro.id, vivo as string, "mensaje que se borra")).mensaje as { id: string };
+    const borrado = await duenas[0]!.cliente.rpc("borrar_mensaje", { p_mensaje: normal.id });
+    if (borrado.error) throw borrado.error;
+    for (let n = 0; n < 3; n++) {
+      const r = await duenas[n]!.cliente.rpc("silenciar_en_sala", { p_store: tiendas[n]!.id, p_user: caro.id, p_tipo: "sala" });
+      if (r.error) throw r.error;
+    }
+
+    await context.addCookies(await cookiesDeSesion(admin.sesion));
+    await page.goto("/admin");
+    const fila = page.getByRole("listitem").filter({ hasText: "Revisada Cuenta" });
+    await expect(fila).toBeVisible();
+    await expect(fila).toContainText("Silenciada en 3 salas");
+
+    await fila.getByRole("button", { name: "Ver mensajes" }).click();
+    const oculto = fila.getByRole("listitem").filter({ hasText: "www.ofertas.com" });
+    await expect(oculto).toContainText("oculto");
+    const borrada = fila.getByRole("listitem").filter({ hasText: "mensaje que se borra" });
+    await expect(borrada).toContainText("borrado");
+
+    await fila.getByRole("button", { name: "Silenciar en toda la plataforma" }).click();
+    await expect(fila.getByRole("button", { name: "Quitar silencio de la plataforma" })).toBeVisible();
+    expect(await publicarPrueba(caro.id, vivo as string, "hola")).toEqual({ estado: "silenciada", tipo: "plataforma" });
+
+    await fila.getByRole("button", { name: "Quitar silencio de la plataforma" }).click();
+    await expect(fila.getByRole("button", { name: "Silenciar en toda la plataforma" })).toBeVisible();
+    // Sigue silenciada en las tres salas: la plataforma ya no la frena, pero las salas sí.
+    expect(await publicarPrueba(caro.id, vivo as string, "hola")).toEqual({ estado: "silenciada", tipo: "sala" });
+  } finally {
+    for (const t of tiendas) {
+      await borrarChatDeTienda(t.id);
+      await borrarVivosDeTienda(t.id);
+    }
+    for (const u of [caro, ...duenas]) await borrarUsuarioPrueba(u.id);
   }
 });

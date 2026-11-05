@@ -2,11 +2,12 @@ import { describe, expect, it } from "vitest";
 import { largoVisible, limpiarTexto, moderar, normalizar } from "./moderar";
 
 // Espeja la lista de la base: drizzle/0008_seguridad_chat.sql menos lo que borra
-// drizzle/0012_chat_palabras_ajuste.sql y 0013_chat_sacar_forro.sql (palabras que aparecen en ventas normales).
+// drizzle/0012_chat_palabras_ajuste.sql y 0013_chat_sacar_forro.sql (palabras que aparecen en ventas normales),
+// más lo que suma drizzle/0014_chat_sumar_palabras.sql.
 const PALABRAS: ReadonlySet<string> = new Set([
   "boludo", "boluda", "pelotudo", "pelotuda", "forra", "hijo de puta", "hijadeputa",
   "hdp", "puta", "puto", "mierda", "conchudo", "conchuda", "la concha de tu madre",
-  "culiado", "culiada", "pija", "verga", "chupapija", "garca", "imbecil", "idiota",
+  "culiado", "culiada", "culiao", "cajeta", "choto", "pija", "verga", "chupapija", "garca", "imbecil", "idiota",
   "estupido", "estupida", "mogolico", "mogolica", "trolo", "trola",
   "sorete", "cagon", "cagona", "mamarracho",
   "tarado", "tarada", "zorra",
@@ -79,6 +80,9 @@ const SIEMPRE_FRENAR: [string, "link" | "promocion" | "insulto"][] = [
   ["hijo de puta", "insulto"],
   ["Hijo  de  PUUUTA!!", "insulto"],
   ["la concha de tu madre", "insulto"],
+  ["sos un culiao", "insulto"],
+  ["Cajeta!!", "insulto"],
+  ["que choto", "insulto"],
 ];
 
 describe("moderar", () => {

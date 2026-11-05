@@ -170,6 +170,26 @@ describe("chat", () => {
     expect(r.mensaje).toMatchObject({ is_seller: true, hidden_reason: null, author_name: "Puesto de Prueba" });
   });
 
+  it("la feriante no se frena a sí misma", async () => {
+    for (let i = 0; i < 4; i++) {
+      const r = await publicarPrueba(mica.id, vivo, "Vestidos a 8000");
+      expect(r.estado).toBe("ok");
+      expect(r.mensaje).toMatchObject({ is_seller: true, hidden_reason: null });
+    }
+    const { data } = await clienteAdmin().from("chat_silences").select("id").eq("user_id", mica.id);
+    expect(data).toEqual([]);
+  });
+
+  it("a la feriante solo le oculta el insulto, y no la silencia", async () => {
+    for (let i = 0; i < 4; i++) {
+      const r = await publicarPrueba(mica.id, vivo, `insulto ${i}`, "insulto");
+      expect(r.estado).toBe("ok");
+      expect(r.mensaje).toMatchObject({ is_seller: true, hidden_reason: "insulto" });
+    }
+    const { data } = await clienteAdmin().from("chat_silences").select("id").eq("user_id", mica.id);
+    expect(data).toEqual([]);
+  });
+
   it("carga inicial", async () => {
     await publicarPrueba(luz.id, vivo, "visible");
     await publicarPrueba(caro.id, vivo, "oculto www.x.com", "link");
@@ -197,9 +217,13 @@ describe("chat", () => {
         });
     });
     try {
+      await new Promise((r) => setTimeout(r, 1000)); // margen para que el filtro quede activo en el servidor
       await publicarPrueba(caro.id, vivo, "escondido www.x.com", "link");
       await publicarPrueba(luz.id, vivo, "se ve");
-      await new Promise((r) => setTimeout(r, 3000));
+      const limite = Date.now() + 8000;
+      while (!recibidos.includes("se ve") && Date.now() < limite) await new Promise((r) => setTimeout(r, 100));
+      if (!recibidos.includes("se ve")) throw new Error("El mensaje visible no llegó por tiempo real en 8 s");
+      await new Promise((r) => setTimeout(r, 500)); // por si el oculto llegara tarde
       expect(recibidos).toEqual(["se ve"]);
     } finally {
       await visitante.removeChannel(canal);

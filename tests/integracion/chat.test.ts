@@ -229,4 +229,208 @@ describe("chat", () => {
       await visitante.removeChannel(canal);
     }
   }, 15_000);
+
+  describe("moderación", () => {
+    const rpc = (u: UsuarioPrueba, fn: string, args: Record<string, unknown>) => u.cliente.rpc(fn, args);
+    const silenciosDe = async (userId: string) => {
+      const { data } = await clienteAdmin().from("chat_silences").select("*").eq("user_id", userId);
+      return data ?? [];
+    };
+    const limpiarSilencios = async (userId: string) => {
+      await clienteAdmin().from("chat_silences").delete().eq("user_id", userId);
+      await clienteAdmin().from("moderation_actions").delete().eq("target_user_id", userId);
+    };
+    afterAll(async () => {
+      await limpiarSilencios(caro.id);
+      await limpiarSilencios(luz.id);
+    });
+
+    it("solo la dueña borra", async () => {
+      const m = (await publicarPrueba(luz.id, vivo, "texto original")).mensaje as { id: string };
+      const a = await rpc(caro, "borrar_mensaje", { p_mensaje: m.id });
+      expect(a.error?.message).toContain("sin_permiso");
+      const b = await rpc(mica, "borrar_mensaje", { p_mensaje: m.id });
+      expect(b.error).toBeNull();
+      const [fila] = await delAdmin();
+      expect(fila.body).toBe("");
+      expect(fila.normalized).toBe("");
+      expect(fila.deleted_at).not.toBeNull();
+      const { data: acc } = await clienteAdmin().from("moderation_actions").select("*").eq("message_id", m.id);
+      expect(acc).toHaveLength(1);
+      expect(acc![0]).toMatchObject({ message_body: "texto original", action: "borrar", actor_id: mica.id, actor_kind: "feriante", target_user_id: luz.id });
+    });
+
+    it("el mensaje borrado no filtra su texto a quien lo lee", async () => {
+      const m = (await publicarPrueba(luz.id, vivo, "secreto borrado")).mensaje as { id: string };
+      await rpc(mica, "borrar_mensaje", { p_mensaje: m.id });
+      const { data } = await clienteAnonimo().from("chat_messages").select("body, normalized, deleted_at").eq("id", m.id);
+      expect(data).toHaveLength(1);
+      expect(data![0]!.body).toBe("");
+      expect(data![0]!.normalized).toBe("");
+      expect(data![0]!.deleted_at).not.toBeNull();
+    });
+
+    it("tiempo real: el borrado llega a quien mira", async () => {
+      const m = (await publicarPrueba(luz.id, vivo, "para borrar en vivo")).mensaje as { id: string };
+      const visitante = clienteAnonimo();
+      const recibidos: { id: string; body: string; deleted_at: string | null }[] = [];
+      const canal = visitante.channel(`chat-borrado-${vivo}`);
+      await new Promise<void>((ok, mal) => {
+        canal
+          .on("postgres_changes", { event: "UPDATE", schema: "public", table: "chat_messages", filter: `live_session_id=eq.${vivo}` },
+            (p) => recibidos.push(p.new as { id: string; body: string; deleted_at: string | null }))
+          .subscribe((estado) => {
+            if (estado === "SUBSCRIBED") ok();
+            if (estado === "CHANNEL_ERROR" || estado === "TIMED_OUT") mal(new Error(estado));
+          });
+      });
+      try {
+        await new Promise((r) => setTimeout(r, 1000));
+        await rpc(mica, "borrar_mensaje", { p_mensaje: m.id });
+        const limite = Date.now() + 8000;
+        while (!recibidos.some((r) => r.id === m.id) && Date.now() < limite) await new Promise((r) => setTimeout(r, 100));
+        const r = recibidos.find((x) => x.id === m.id);
+        if (!r) throw new Error("El borrado no llegó por tiempo real en 8 s");
+        expect(r.deleted_at).not.toBeNull();
+        expect(r.body).toBe("");
+      } finally {
+        await visitante.removeChannel(canal);
+      }
+    }, 15_000);
+
+    it("no borra en sala ajena", async () => {
+      const otra = await crearUsuarioPrueba({ nombre: "Otra Feriante" });
+      const t2 = await crearTiendaPrueba(otra);
+      try {
+        const m = (await publicarPrueba(luz.id, vivo, "de la sala de Mica")).mensaje as { id: string };
+        const { error } = await rpc(otra, "borrar_mensaje", { p_mensaje: m.id });
+        expect(error?.message).toContain("sin_permiso");
+        expect((await delAdmin())[0].deleted_at).toBeNull();
+      } finally {
+        await borrarChatDeTienda(t2.id);
+        await borrarUsuarioPrueba(otra.id);
+      }
+    });
+
+    it("silenciar 10 minutos", async () => {
+      await limpiarSilencios(caro.id);
+      const { error } = await rpc(mica, "silenciar_en_sala", { p_store: tienda.id, p_user: caro.id, p_tipo: "temporal" });
+      expect(error).toBeNull();
+      expect(await publicarPrueba(caro.id, vivo, "hola")).toEqual({ estado: "silenciada", tipo: "temporal" });
+      const { data: mio } = await caro.cliente.from("chat_silences").select("kind, source").eq("user_id", caro.id);
+      expect(mio).toEqual([{ kind: "temporal", source: "feriante" }]);
+      const { data: ajeno } = await luz.cliente.from("chat_silences").select("kind").eq("user_id", caro.id);
+      expect(ajeno).toEqual([]);
+      const [s] = await silenciosDe(caro.id);
+      const falta = new Date(s.until).getTime() - Date.now();
+      expect(falta).toBeGreaterThan(590_000);
+      expect(falta).toBeLessThanOrEqual(610_000);
+      await limpiarSilencios(caro.id);
+    });
+
+    it("tipo inválido y sin permiso", async () => {
+      const a = await rpc(mica, "silenciar_en_sala", { p_store: tienda.id, p_user: caro.id, p_tipo: "plataforma" });
+      expect(a.error?.message).toContain("datos_invalidos");
+      const b = await rpc(caro, "silenciar_en_sala", { p_store: tienda.id, p_user: luz.id, p_tipo: "sala" });
+      expect(b.error?.message).toContain("sin_permiso");
+      expect(await silenciosDe(luz.id)).toEqual([]);
+    });
+
+    it("no se silencia a sí misma", async () => {
+      const { error } = await rpc(mica, "silenciar_en_sala", { p_store: tienda.id, p_user: mica.id, p_tipo: "sala" });
+      expect(error?.message).toContain("no_a_vos_misma");
+      expect(await silenciosDe(mica.id)).toEqual([]);
+    });
+
+    it("silenciar en mi sala y deshacer", async () => {
+      await limpiarSilencios(caro.id);
+      await publicarPrueba(caro.id, vivo, "yo escribí acá");
+      await rpc(mica, "silenciar_en_sala", { p_store: tienda.id, p_user: caro.id, p_tipo: "sala" });
+      await rpc(mica, "silenciar_en_sala", { p_store: tienda.id, p_user: caro.id, p_tipo: "sala" });
+      expect(await silenciosDe(caro.id)).toHaveLength(1);
+      expect(await publicarPrueba(caro.id, vivo, "otra")).toEqual({ estado: "silenciada", tipo: "sala" });
+      const { data, error } = await rpc(mica, "silenciadas_de_mi_sala", { p_store: tienda.id });
+      expect(error).toBeNull();
+      expect(data).toHaveLength(1);
+      expect(data[0]).toMatchObject({ user_id: caro.id, nombre: "Prueba P." });
+      expect((await rpc(caro, "silenciadas_de_mi_sala", { p_store: tienda.id })).error?.message).toContain("sin_permiso");
+      expect((await rpc(caro, "quitar_silencio", { p_store: tienda.id, p_user: caro.id })).error?.message).toContain("sin_permiso");
+      expect((await rpc(mica, "quitar_silencio", { p_store: tienda.id, p_user: caro.id })).error).toBeNull();
+      expect((await publicarPrueba(caro.id, vivo, "volví")).estado).toBe("ok");
+      expect((await rpc(mica, "silenciadas_de_mi_sala", { p_store: tienda.id })).data).toEqual([]);
+      await limpiarSilencios(caro.id);
+    });
+
+    it("sin mensajes, el nombre es Alguien", async () => {
+      await limpiarSilencios(luz.id);
+      await rpc(mica, "silenciar_en_sala", { p_store: tienda.id, p_user: luz.id, p_tipo: "sala" });
+      const { data } = await rpc(mica, "silenciadas_de_mi_sala", { p_store: tienda.id });
+      expect(data[0]).toMatchObject({ user_id: luz.id, nombre: "Alguien" });
+      await limpiarSilencios(luz.id);
+    });
+
+    it("tres feriantes marcan la cuenta", async () => {
+      await limpiarSilencios(caro.id);
+      const ferias = await Promise.all([crearUsuarioPrueba({ nombre: "F1" }), crearUsuarioPrueba({ nombre: "F2" }), crearUsuarioPrueba({ nombre: "F3" })]);
+      const tiendas = [] as { id: string }[];
+      try {
+        for (const f of ferias) tiendas.push(await crearTiendaPrueba(f));
+        const revisar = async () => {
+          const { data, error } = await admin.cliente.rpc("cuentas_para_revisar");
+          if (error) throw error;
+          return (data as { user_id: string; salas: number; en_plataforma: boolean }[]).find((c) => c.user_id === caro.id);
+        };
+        // dos de sala y una temporal: no alcanza
+        await rpc(ferias[0]!, "silenciar_en_sala", { p_store: tiendas[0]!.id, p_user: caro.id, p_tipo: "sala" });
+        await rpc(ferias[1]!, "silenciar_en_sala", { p_store: tiendas[1]!.id, p_user: caro.id, p_tipo: "sala" });
+        await rpc(ferias[2]!, "silenciar_en_sala", { p_store: tiendas[2]!.id, p_user: caro.id, p_tipo: "temporal" });
+        expect(await revisar()).toBeUndefined();
+        // tres de sala: aparece
+        await rpc(ferias[2]!, "silenciar_en_sala", { p_store: tiendas[2]!.id, p_user: caro.id, p_tipo: "sala" });
+        expect(await revisar()).toMatchObject({ salas: 3, en_plataforma: false });
+        expect((await mica.cliente.rpc("cuentas_para_revisar")).error?.message).toContain("sin_permiso");
+        // una feriante lo quita: deja de aparecer
+        await rpc(ferias[0]!, "quitar_silencio", { p_store: tiendas[0]!.id, p_user: caro.id });
+        expect(await revisar()).toBeUndefined();
+      } finally {
+        await limpiarSilencios(caro.id);
+        for (const t of tiendas) await borrarChatDeTienda(t.id);
+        await Promise.all(ferias.map((f) => borrarUsuarioPrueba(f.id)));
+      }
+    });
+
+    it("silenciar en toda la plataforma", async () => {
+      await limpiarSilencios(caro.id);
+      expect((await rpc(mica, "silenciar_en_plataforma", { p_user: caro.id })).error?.message).toContain("sin_permiso");
+      expect((await rpc(admin, "silenciar_en_plataforma", { p_user: caro.id })).error).toBeNull();
+      expect(await publicarPrueba(caro.id, vivo, "hola")).toEqual({ estado: "silenciada", tipo: "plataforma" });
+      const { data } = await admin.cliente.rpc("cuentas_para_revisar");
+      expect((data as { user_id: string; en_plataforma: boolean }[]).find((c) => c.user_id === caro.id)).toMatchObject({ en_plataforma: true });
+      expect((await rpc(mica, "quitar_silencio_plataforma", { p_user: caro.id })).error?.message).toContain("sin_permiso");
+      expect((await rpc(admin, "quitar_silencio_plataforma", { p_user: caro.id })).error).toBeNull();
+      expect((await publicarPrueba(caro.id, vivo, "ya puedo")).estado).toBe("ok");
+      await limpiarSilencios(caro.id);
+    });
+
+    it("borrado a los 30 días", async () => {
+      await limpiarSilencios(caro.id);
+      await limpiarSilencios(luz.id);
+      const a = (await publicarPrueba(luz.id, vivo, "viejo normal")).mensaje as { id: string };
+      const b = (await publicarPrueba(caro.id, vivo, "viejo de silenciada")).mensaje as { id: string };
+      const c = (await publicarPrueba(luz.id, vivo, "reciente")).mensaje as { id: string };
+      await rpc(mica, "silenciar_en_sala", { p_store: tienda.id, p_user: caro.id, p_tipo: "sala" });
+      const viejo = new Date(Date.now() - 31 * 86_400_000).toISOString();
+      await clienteAdmin().from("chat_messages").update({ created_at: viejo }).in("id", [a.id, b.id]);
+      await clienteAdmin().from("moderation_actions").update({ created_at: viejo }).eq("target_user_id", caro.id);
+      expect((await caro.cliente.rpc("borrar_chat_viejo")).error).not.toBeNull();
+      expect((await clienteAdmin().rpc("borrar_chat_viejo")).error).toBeNull();
+      const ids = (await delAdmin()).map((f) => f.id);
+      expect(ids).toContain(b.id);
+      expect(ids).toContain(c.id);
+      expect(ids).not.toContain(a.id);
+      const { data: acc } = await clienteAdmin().from("moderation_actions").select("id").eq("target_user_id", caro.id);
+      expect(acc!.length).toBeGreaterThan(0); // su registro se conserva mientras siga silenciada
+      await limpiarSilencios(caro.id);
+    });
+  });
 });

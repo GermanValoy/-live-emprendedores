@@ -145,6 +145,8 @@ export const liveSessions = pgTable(
     muted: boolean("muted").notNull().default(false),
     viewers: integer("viewers").notNull().default(0),
     peakViewers: integer("peak_viewers").notNull().default(0),
+    signalWindowStart: timestamp("signal_window_start", { withTimezone: true }),
+    signalCount: integer("signal_count").notNull().default(0),
   },
   (t) => [
     uniqueIndex("live_sessions_un_abierto_por_puesto").on(t.storeId).where(sql`ended_at IS NULL`),

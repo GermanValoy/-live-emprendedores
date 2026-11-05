@@ -71,6 +71,20 @@
       "when": 1793849836010,
       "tag": "0009_chat_feriante_sin_frenos",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1793850657907,
+      "tag": "0010_senal_limite",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1793850671385,
+      "tag": "0011_moderacion_chat",
+      "breakpoints": true
     }
   ]
 }

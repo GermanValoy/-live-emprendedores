@@ -92,6 +92,13 @@
       "when": 1793858129791,
       "tag": "0012_chat_palabras_ajuste",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1793888919054,
+      "tag": "0013_chat_sacar_forro",
+      "breakpoints": true
     }
   ]
 }

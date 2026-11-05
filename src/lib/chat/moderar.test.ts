@@ -2,9 +2,9 @@ import { describe, expect, it } from "vitest";
 import { largoVisible, limpiarTexto, moderar, normalizar } from "./moderar";
 
 // Espeja la lista de la base: drizzle/0008_seguridad_chat.sql menos lo que borra
-// drizzle/0012_chat_palabras_ajuste.sql (palabras que aparecen en ventas normales).
+// drizzle/0012_chat_palabras_ajuste.sql y 0013_chat_sacar_forro.sql (palabras que aparecen en ventas normales).
 const PALABRAS: ReadonlySet<string> = new Set([
-  "boludo", "boluda", "pelotudo", "pelotuda", "forro", "forra", "hijo de puta", "hijadeputa",
+  "boludo", "boluda", "pelotudo", "pelotuda", "forra", "hijo de puta", "hijadeputa",
   "hdp", "puta", "puto", "mierda", "conchudo", "conchuda", "la concha de tu madre",
   "culiado", "culiada", "pija", "verga", "chupapija", "garca", "imbecil", "idiota",
   "estupido", "estupida", "mogolico", "mogolica", "trolo", "trola",
@@ -33,6 +33,8 @@ const NUNCA_FRENAR = [
   "gracias mica!!",
   "Vñleta",
   "me lo reservás?",
+  "campera con forro polar",
+  "¿el forro es de friza?",
   // cuidado con las palabras que contienen un insulto adentro
   "Hola. Me encanta",
   "gracias. me lo llevo",

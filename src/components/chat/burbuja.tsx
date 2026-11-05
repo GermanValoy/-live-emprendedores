@@ -28,7 +28,7 @@ export function Burbuja({ mensaje, pendiente, error, alTocar }: Props) {
     error && "ring-1 ring-red-400",
   );
   return (
-    <li data-testid="burbuja" className="flex flex-col items-start gap-1">
+    <li data-testid="burbuja" data-estado={pendiente ? "pendiente" : error ? "error" : "ok"} className="flex flex-col items-start gap-1">
       {alTocar && !error ? (
         <button type="button" onClick={alTocar} className={cn(caja, "min-h-11 outline-none focus-visible:ring-3 focus-visible:ring-white/70")}>
           {contenido}

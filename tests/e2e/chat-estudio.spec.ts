@@ -142,8 +142,11 @@ test("sus mensajes no abren el panel", async ({ browser }) => {
   const estudio = await abrirEstudio(browser, mica);
   await escribir(estudio, "mi propio mensaje");
   await expect(estudio.getByText("mi propio mensaje")).toBeVisible();
-  await estudio.getByText("mi propio mensaje").click();
-  await expect(estudio.getByRole("button", { name: "Borrar este mensaje" })).toHaveCount(0);
+  // Se espera la copia confirmada por el servidor, no la que se ve mientras se envía.
+  const burbuja = estudio.getByTestId("burbuja").filter({ hasText: "mi propio mensaje" });
+  await expect(burbuja).toHaveAttribute("data-estado", "ok", { timeout: 15_000 });
+  await burbuja.getByText("mi propio mensaje").click();
+  await expect(estudio.getByRole("button", { name: "Borrar este mensaje" })).not.toBeVisible();
 });
 
 test("los ocultos no le aparecen", async ({ browser }) => {
@@ -163,7 +166,6 @@ test("los ocultos no le aparecen", async ({ browser }) => {
 
 test("los botones del estudio siguen andando con chat", async ({ browser }) => {
   test.slow();
-  test.slow();
   const { mica, tienda } = await nuevaMica();
   const caro = await nuevaCompradora("Carolina Medina");
   const estudio = await abrirEstudio(browser, mica);
@@ -180,4 +182,29 @@ test("los botones del estudio siguen andando con chat", async ({ browser }) => {
   await expect(estudio.getByText("¿Seguro que querés terminar el vivo?")).toBeVisible();
   await estudio.getByRole("button", { name: "Seguir en vivo" }).click();
   await expect(estudio.getByText("¿Seguro que querés terminar el vivo?")).toHaveCount(0);
+});
+
+test("con el chat lleno, Activar sonido se puede tocar en un celular chico", async ({ browser }) => {
+  test.slow();
+  const { mica, tienda } = await nuevaMica();
+  const caro = await nuevaCompradora("Carolina Medina");
+  const estudio = await abrirEstudio(browser, mica);
+  await estudio.setViewportSize({ width: 375, height: 667 });
+  const vivo = await vivoDe(tienda.id);
+  for (let n = 1; n <= 10; n++) {
+    if (n === 6) await estudio.waitForTimeout(11_000);
+    await publicarPrueba(caro.id, vivo, `mensaje número ${n}`);
+  }
+  await expect(estudio.getByText("mensaje número 10")).toBeVisible({ timeout: 15_000 });
+  // Sale de la pantalla y vuelve: queda el cartel "Estás silenciada".
+  await estudio.evaluate(() => {
+    for (const e of ["hidden", "visible"]) {
+      Object.defineProperty(document, "visibilityState", { configurable: true, get: () => e });
+      document.dispatchEvent(new Event("visibilitychange"));
+    }
+  });
+  await expect(estudio.getByText("Estás silenciada")).toBeVisible();
+  const boton = estudio.getByRole("status").getByRole("button", { name: "Activar sonido" });
+  await boton.click();
+  await expect(estudio.getByText("Estás silenciada")).toHaveCount(0);
 });

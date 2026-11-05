@@ -7,7 +7,9 @@ import { type ReactNode, useEffect, useEffectEvent, useLayoutEffect, useRef, use
 import { salirEnVivo, terminarVivo } from "@/app/mi-puesto/vivo/acciones";
 import { entrarConGoogle } from "@/app/auth/acciones";
 import { EnVivo } from "@/components/marca/en-vivo";
+import { ChatEstudio } from "@/components/chat/chat-estudio";
 import { BotonAvisarWhatsapp } from "@/components/vivos/boton-avisar-whatsapp";
+import type { ConfigChat, MensajeChat } from "@/lib/chat/tipos";
 import { createClient } from "@/lib/supabase/client";
 import { contarMirando } from "@/lib/vivos/presencia";
 import { vigilarSalida } from "@/lib/vivos/privacidad";
@@ -22,6 +24,7 @@ type Props = {
   urlTransmitir: string;
   config: ConfigVivo;
   vivoAbierto: Vivo | null;
+  chat: { config: ConfigChat; mensajes: MensajeChat[]; userId: string };
 };
 
 /** Cómo terminó la transmisión en este celular. */
@@ -62,7 +65,7 @@ export function EstudioVivo(props: Props) {
 }
 
 function Estudio({
-  tienda, urlTransmitir, config, vivoAbierto, salirSolo, alSalirSolo, alSalirDeNuevo,
+  tienda, urlTransmitir, config, vivoAbierto, chat, salirSolo, alSalirSolo, alSalirDeNuevo,
 }: Props & { salirSolo: boolean; alSalirSolo(): void; alSalirDeNuevo(): void }) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const transmisorRef = useRef<Transmisor | null>(null);
@@ -413,9 +416,19 @@ function Estudio({
       )}
 
       {enVivo && consejo && !confirmando && (
-        <div className="absolute inset-x-4 bottom-[calc(max(env(safe-area-inset-bottom),1rem)+14rem)]">
+        <div className="absolute inset-x-4 top-[calc(max(env(safe-area-inset-top),0.75rem)+6.5rem)]">
           <ConsejoNoSalir />
         </div>
+      )}
+
+      {enVivo && vivo && (
+        <ChatEstudio
+          vivo={{ id: vivo.id, storeId: tienda.id }}
+          inicial={chat.mensajes}
+          config={chat.config}
+          userId={chat.userId}
+          claseBase="bottom-[calc(max(env(safe-area-inset-bottom),1rem)+3.75rem)]"
+        />
       )}
 
       {enVivo && (
@@ -436,7 +449,7 @@ function Estudio({
       )}
 
       {enVivo && confirmando && (
-        <div className="absolute inset-0 flex items-end bg-black/60 p-4 pb-[max(env(safe-area-inset-bottom),1rem)]">
+        <div className="absolute inset-0 z-30 flex items-end bg-black/60 p-4 pb-[max(env(safe-area-inset-bottom),1rem)]">
           <div role="alertdialog" aria-modal="true" aria-labelledby="confirmar-fin" className="flex w-full flex-col gap-3 rounded-3xl bg-background p-5 text-foreground">
             <p id="confirmar-fin" className="text-lg font-extrabold">¿Seguro que querés terminar el vivo?</p>
             <p className="text-sm text-muted-foreground">Quien está mirando va a ver que terminó.</p>

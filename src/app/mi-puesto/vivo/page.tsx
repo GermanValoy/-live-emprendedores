@@ -7,6 +7,8 @@ import { EstadoVacio } from "@/components/estado-vacio";
 import { buttonVariants } from "@/components/ui/button";
 import { EstudioVivo } from "@/components/vivos/estudio-vivo";
 import { obtenerUsuarioId } from "@/lib/auth/sesion";
+import { obtenerConfigChat } from "@/lib/chat/config";
+import { mensajesIniciales } from "@/lib/chat/datos";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { obtenerMiTienda } from "@/lib/tiendas/datos";
@@ -56,13 +58,19 @@ async function ContenidoVivo() {
       </div>
     );
   }
-  const [config, vivoAbierto] = await Promise.all([obtenerConfigVivo(supabase), vivoAbiertoDe(supabase, tienda.id)]);
+  const [config, vivoAbierto, configChat] = await Promise.all([
+    obtenerConfigVivo(supabase),
+    vivoAbiertoDe(supabase, tienda.id),
+    obtenerConfigChat(),
+  ]);
+  const mensajes = vivoAbierto ? await mensajesIniciales(supabase, vivoAbierto.id, configChat.mensajes_al_entrar) : [];
   return (
     <EstudioVivo
       tienda={{ id: tienda.id, handle: tienda.handle, name: tienda.name }}
       urlTransmitir={urls.urlTransmitir}
       config={config}
       vivoAbierto={vivoAbierto}
+      chat={{ config: configChat, mensajes, userId }}
     />
   );
 }

@@ -5,6 +5,7 @@ import { obtenerUsuarioId } from "@/lib/auth/sesion";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { obtenerMiTienda } from "@/lib/tiendas/datos";
+import type { Resultado } from "@/lib/tiendas/tipos";
 import { ErrorCloudflare } from "@/lib/vivos/cloudflare";
 import { credencialesCloudflare } from "@/lib/vivos/config";
 import { CAMPOS_VIVO, type Vivo } from "@/lib/vivos/tipos";
@@ -69,4 +70,50 @@ export async function terminarVivo(vivoId: string): Promise<ResultadoVivo> {
   const { error } = await supabase.rpc("terminar_vivo", { p_vivo: vivoId });
   if (error) return { ok: false, error: mensajeDeError(error) };
   return leerVivoOError(supabase, vivoId);
+}
+
+// Moderación del chat: la base verifica que la sesión sea la dueña de la tienda.
+
+const ERROR_MODERAR = "No se pudo completar. Revisá tu conexión y probá de nuevo.";
+
+function errorDeModerar(e: { message?: string }): string {
+  const m = e.message ?? "";
+  if (m.includes("no_a_vos_misma")) return "No podés silenciarte a vos misma.";
+  if (m.includes("sin_permiso")) return "No tenés permiso para hacer eso en esta sala.";
+  return ERROR_MODERAR;
+}
+
+export async function borrarMensaje(mensajeId: string): Promise<Resultado> {
+  if (!uuid.safeParse(mensajeId).success) return { ok: false, error: ERROR_MODERAR };
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("borrar_mensaje", { p_mensaje: mensajeId });
+  if (error) {
+    console.error("borrarMensaje", error.message);
+    return { ok: false, error: errorDeModerar(error) };
+  }
+  return { ok: true };
+}
+
+export async function silenciarEnSala(storeId: string, userId: string, tipo: "temporal" | "sala"): Promise<Resultado> {
+  if (!uuid.safeParse(storeId).success || !uuid.safeParse(userId).success || (tipo !== "temporal" && tipo !== "sala")) {
+    return { ok: false, error: ERROR_MODERAR };
+  }
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("silenciar_en_sala", { p_store: storeId, p_user: userId, p_tipo: tipo });
+  if (error) {
+    console.error("silenciarEnSala", error.message);
+    return { ok: false, error: errorDeModerar(error) };
+  }
+  return { ok: true };
+}
+
+export async function quitarSilencio(storeId: string, userId: string): Promise<Resultado> {
+  if (!uuid.safeParse(storeId).success || !uuid.safeParse(userId).success) return { ok: false, error: ERROR_MODERAR };
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("quitar_silencio", { p_store: storeId, p_user: userId });
+  if (error) {
+    console.error("quitarSilencio", error.message);
+    return { ok: false, error: errorDeModerar(error) };
+  }
+  return { ok: true };
 }

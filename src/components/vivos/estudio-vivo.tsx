@@ -7,7 +7,9 @@ import { type ReactNode, useEffect, useEffectEvent, useLayoutEffect, useRef, use
 import { salirEnVivo, terminarVivo } from "@/app/mi-puesto/vivo/acciones";
 import { entrarConGoogle } from "@/app/auth/acciones";
 import { EnVivo } from "@/components/marca/en-vivo";
+import { ChatEstudio } from "@/components/chat/chat-estudio";
 import { BotonAvisarWhatsapp } from "@/components/vivos/boton-avisar-whatsapp";
+import type { ConfigChat, MensajeChat } from "@/lib/chat/tipos";
 import { createClient } from "@/lib/supabase/client";
 import { contarMirando } from "@/lib/vivos/presencia";
 import { vigilarSalida } from "@/lib/vivos/privacidad";
@@ -22,6 +24,7 @@ type Props = {
   urlTransmitir: string;
   config: ConfigVivo;
   vivoAbierto: Vivo | null;
+  chat: { config: ConfigChat; mensajes: MensajeChat[]; userId: string };
 };
 
 /** Cómo terminó la transmisión en este celular. */
@@ -62,7 +65,7 @@ export function EstudioVivo(props: Props) {
 }
 
 function Estudio({
-  tienda, urlTransmitir, config, vivoAbierto, salirSolo, alSalirSolo, alSalirDeNuevo,
+  tienda, urlTransmitir, config, vivoAbierto, chat, salirSolo, alSalirSolo, alSalirDeNuevo,
 }: Props & { salirSolo: boolean; alSalirSolo(): void; alSalirDeNuevo(): void }) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const transmisorRef = useRef<Transmisor | null>(null);
@@ -367,7 +370,7 @@ function Estudio({
       )}
 
       {enVivo && avisoSilenciada && silenciada && (
-        <div role="status" className="absolute inset-x-6 top-1/3 flex flex-col items-center gap-3 rounded-3xl bg-white p-5 text-center text-foreground shadow-2xl">
+        <div role="status" className="absolute inset-x-6 top-1/3 z-20 flex flex-col items-center gap-3 rounded-3xl bg-white p-5 text-center text-foreground shadow-2xl">
           <p className="text-xl font-extrabold">Estás silenciada</p>
           <p className="text-sm text-muted-foreground">Saliste de la pantalla y apagamos tu micrófono. Nadie te escucha.</p>
           <button type="button" onClick={cambiarSilencio} className="h-12 w-full rounded-full bg-primary text-base font-extrabold text-primary-foreground outline-none focus-visible:ring-3 focus-visible:ring-primary/40">
@@ -377,7 +380,7 @@ function Estudio({
       )}
 
       {enVivo && estadoTx === "sin-camara" && (
-        <div role="alert" className="absolute inset-x-6 top-1/3 flex flex-col items-center gap-3 rounded-3xl bg-black/80 p-5 text-center backdrop-blur">
+        <div role="alert" className="absolute inset-x-6 top-1/3 z-20 flex flex-col items-center gap-3 rounded-3xl bg-black/80 p-5 text-center backdrop-blur">
           <p className="text-lg font-extrabold">Se apagó la cámara</p>
           <BotonClaro onClick={() => void transmisorRef.current?.volverATransmitir()}>Volver a transmitir</BotonClaro>
         </div>
@@ -386,7 +389,7 @@ function Estudio({
       {sinCamaraEnPrevia && <PermisoCamara alProbar={() => void transmisorRef.current?.volverATransmitir()} />}
 
       {error && fase !== "fin" && (
-        <p role="alert" className="absolute inset-x-4 bottom-[calc(max(env(safe-area-inset-bottom),1rem)+11rem)] rounded-2xl bg-white px-4 py-3 text-sm font-semibold text-destructive shadow-lg">
+        <p role="alert" className="absolute inset-x-4 top-[calc(max(env(safe-area-inset-top),0.75rem)+3.25rem)] z-20 rounded-2xl bg-white px-4 py-3 text-sm font-semibold text-destructive shadow-lg">
           {error}
         </p>
       )}
@@ -413,9 +416,19 @@ function Estudio({
       )}
 
       {enVivo && consejo && !confirmando && (
-        <div className="absolute inset-x-4 bottom-[calc(max(env(safe-area-inset-bottom),1rem)+14rem)]">
+        <div className="absolute inset-x-4 top-[calc(max(env(safe-area-inset-top),0.75rem)+6.5rem)]">
           <ConsejoNoSalir />
         </div>
+      )}
+
+      {enVivo && vivo && (
+        <ChatEstudio
+          vivo={{ id: vivo.id, storeId: tienda.id }}
+          inicial={chat.mensajes}
+          config={chat.config}
+          userId={chat.userId}
+          claseBase="bottom-[calc(max(env(safe-area-inset-bottom),1rem)+3.75rem)]"
+        />
       )}
 
       {enVivo && (
@@ -436,7 +449,7 @@ function Estudio({
       )}
 
       {enVivo && confirmando && (
-        <div className="absolute inset-0 flex items-end bg-black/60 p-4 pb-[max(env(safe-area-inset-bottom),1rem)]">
+        <div className="absolute inset-0 z-30 flex items-end bg-black/60 p-4 pb-[max(env(safe-area-inset-bottom),1rem)]">
           <div role="alertdialog" aria-modal="true" aria-labelledby="confirmar-fin" className="flex w-full flex-col gap-3 rounded-3xl bg-background p-5 text-foreground">
             <p id="confirmar-fin" className="text-lg font-extrabold">¿Seguro que querés terminar el vivo?</p>
             <p className="text-sm text-muted-foreground">Quien está mirando va a ver que terminó.</p>

@@ -3,11 +3,13 @@
 import { cn } from "cn";
 import Link from "next/link";
 import { type ReactNode, useLayoutEffect, useRef, useState } from "react";
+import { ChatSala } from "@/components/chat/chat-sala";
 import { Foto } from "@/components/fotos/foto";
 import { EnVivo } from "@/components/marca/en-vivo";
 import { BotonSeguir } from "@/components/tiendas/boton-seguir";
 import { EsperaFeria } from "@/components/vivos/espera-feria";
 import { useSalaVivo } from "@/components/vivos/use-sala-vivo";
+import type { ConfigChat, MensajeChat, SilencioChat } from "@/lib/chat/tipos";
 import { formatARS } from "@/lib/format/plata";
 import type { ConfigVivo, Vivo } from "@/lib/vivos/tipos";
 
@@ -19,6 +21,8 @@ type Props = {
   config: ConfigVivo;
   siguiendo: boolean;
   conSesion: boolean;
+  /** El chat: valores, últimos mensajes, mi silencio y quién soy (null: visitante). */
+  chat: { config: ConfigChat; mensajes: MensajeChat[]; silencio: SilencioChat; userId: string | null };
 };
 
 /** La sala de la compradora: espera animada, el vivo a pantalla completa y, al terminar, otra vez la espera. Siempre oscura. */
@@ -30,7 +34,7 @@ export function SalaVivo(props: Props) {
   return <Sala key={visita} {...props} />;
 }
 
-function Sala({ tienda, productos, vivoInicial, config, siguiendo, conSesion }: Props) {
+function Sala({ tienda, productos, vivoInicial, config, siguiendo, conSesion, chat }: Props) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const { vivo, estado, mirando, reproduccion, sinSonido, activarSonido, canalListo } = useSalaVivo(tienda.id, vivoInicial, config, videoRef);
   const abierto = estado === "en-vivo" || estado === "vuelve-pronto" || estado === "reconectando-feriante";
@@ -45,8 +49,8 @@ function Sala({ tienda, productos, vivoInicial, config, siguiendo, conSesion }: 
       {abierto && (
         <>
           <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 top-0 h-40 bg-linear-to-b from-black/60 to-transparent" />
-          {/* Espacio del chat (Parte 3): queda libre abajo. */}
-          <div aria-hidden="true" data-testid="espacio-chat" className="pointer-events-none absolute inset-x-0 bottom-0 h-56 bg-linear-to-t from-black/50 to-transparent" />
+          {/* Fondo suave para que se lea el chat. */}
+          <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 bottom-0 h-56 bg-linear-to-t from-black/50 to-transparent" />
         </>
       )}
 
@@ -120,12 +124,24 @@ function Sala({ tienda, productos, vivoInicial, config, siguiendo, conSesion }: 
         <button
           type="button"
           onClick={activarSonido}
-          className="absolute bottom-[calc(max(env(safe-area-inset-bottom),1rem)+15rem)] left-1/2 min-h-12 -translate-x-1/2 rounded-full bg-white px-6 text-base font-extrabold whitespace-nowrap text-primary shadow-lg outline-none focus-visible:ring-3 focus-visible:ring-white/70 motion-safe:active:scale-[0.97]"
+          className="absolute bottom-[calc(max(env(safe-area-inset-bottom),1rem)+33dvh+5rem)] left-1/2 min-h-12 -translate-x-1/2 rounded-full bg-white px-6 text-base font-extrabold whitespace-nowrap text-primary shadow-lg outline-none focus-visible:ring-3 focus-visible:ring-white/70 motion-safe:active:scale-[0.97]"
         >
           <span aria-hidden="true">🔊 </span>Tocá para activar el sonido
         </button>
       )}
 
+      {/* El chat vive mientras el vivo está abierto; al terminar se va con el resto de la sala en vivo. */}
+      {abierto && vivo && (
+        <ChatSala
+          key={vivo.id}
+          vivo={{ id: vivo.id, storeId: tienda.id }}
+          inicial={chat.mensajes}
+          silencioInicial={chat.silencio}
+          config={chat.config}
+          userId={chat.userId}
+          handle={tienda.handle}
+        />
+      )}
     </main>
   );
 }

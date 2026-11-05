@@ -124,6 +124,18 @@ describe("vivos", () => {
     expect([f.viewers, f.peak_viewers]).toEqual([3, 7]);
   });
 
+  it("demasiadas señales", async () => {
+    const { data: id } = await abrir(mica, tiendaMica.id);
+    const senal = (mirando: number) =>
+      mica.cliente.rpc("senal_vivo", { p_vivo: id, p_device: dispo, p_fuera: false, p_silenciada: false, p_mirando: mirando });
+    let ultima: unknown = null;
+    for (let i = 0; i < 31; i++) ultima = (await senal(1)).data;
+    expect(ultima).toBe("demasiadas");
+    const antes = await fila(id);
+    expect((await senal(55)).data).toBe("demasiadas");
+    expect(await fila(id)).toEqual(antes);
+  });
+
   it("fuera de la pantalla", async () => {
     const { data: id } = await abrir(mica, tiendaMica.id);
     const senal = (fuera: boolean) =>

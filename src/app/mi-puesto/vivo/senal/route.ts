@@ -27,5 +27,6 @@ export async function POST(request: Request) {
     if (error.message.includes("sin_permiso")) return NextResponse.json({ error: "sin_permiso" }, { status: 403 });
     return NextResponse.json({ error: "error" }, { status: 500 });
   }
+  if (data === "demasiadas") return NextResponse.json({ error: "demasiadas" }, { status: 429 });
   return NextResponse.json({ resultado: data });
 }

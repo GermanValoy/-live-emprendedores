@@ -6,6 +6,7 @@ import { obtenerUsuarioId } from "@/lib/auth/sesion";
 import { formatFechaTucuman } from "@/lib/format/fecha";
 import { createClient } from "@/lib/supabase/server";
 import { listarVivosAbiertos } from "@/lib/vivos/datos";
+import { type FilaCuenta, PanelCuentas } from "./panel-cuentas";
 import { PanelVivos } from "./panel-vivos";
 import { type FilaInvitacion, PanelInvitaciones } from "./panel-invitaciones";
 
@@ -40,6 +41,17 @@ async function ContenidoAdmin() {
     viewers: vivo.viewers,
   }));
 
+  const { data: revisar } = await supabase.rpc("cuentas_para_revisar");
+  const cuentas: FilaCuenta[] = (
+    (revisar as { user_id: string; nombre: string; salas: number; desde: string | null; en_plataforma: boolean }[] | null) ?? []
+  ).map((c) => ({
+    userId: c.user_id,
+    nombre: c.nombre,
+    salas: c.salas,
+    desde: c.desde ? formatFechaTucuman(c.desde) : "",
+    enPlataforma: c.en_plataforma,
+  }));
+
   const { data } = await supabase
     .from("invitations")
     .select("id, note, created_at, expires_at, used_at, revoked_at, used_by")
@@ -64,6 +76,7 @@ async function ContenidoAdmin() {
     <>
       <h1 className="sr-only">Administración</h1>
       <PanelVivos vivos={vivos} />
+      <PanelCuentas cuentas={cuentas} />
       <h2 className="text-2xl font-extrabold">Invitaciones</h2>
       <PanelInvitaciones filas={filas} />
     </>

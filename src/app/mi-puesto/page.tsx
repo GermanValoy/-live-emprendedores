@@ -6,6 +6,8 @@ import { EstadoVacio } from "@/components/estado-vacio";
 import { BotonAvisarWhatsapp } from "@/components/vivos/boton-avisar-whatsapp";
 import { buttonVariants } from "@/components/ui/button";
 import { obtenerUsuarioId } from "@/lib/auth/sesion";
+import { formatFechaTucuman } from "@/lib/format/fecha";
+import { type FilaSilenciada, PersonasSilenciadas } from "./personas-silenciadas";
 import { createClient } from "@/lib/supabase/server";
 import { obtenerMiTienda } from "@/lib/tiendas/datos";
 import { vivoAbiertoDe } from "@/lib/vivos/datos";
@@ -28,6 +30,15 @@ async function ContenidoMiPuesto({ searchParams }: { searchParams: Promise<{ lis
   const { listo } = await searchParams;
   const completa = tienda.onboarding_step >= 5;
   const vivoAbierto = completa ? await vivoAbiertoDe(supabase, tienda.id) : null;
+  let silenciadas: FilaSilenciada[] = [];
+  if (completa) {
+    const { data } = await supabase.rpc("silenciadas_de_mi_sala", { p_store: tienda.id });
+    silenciadas = ((data as { user_id: string; nombre: string; desde: string }[] | null) ?? []).map((s) => ({
+      userId: s.user_id,
+      nombre: s.nombre,
+      desde: formatFechaTucuman(s.desde),
+    }));
+  }
   return (
     <>
       <h1 className="text-2xl font-extrabold">Hola, {tienda.name}</h1>
@@ -59,6 +70,7 @@ async function ContenidoMiPuesto({ searchParams }: { searchParams: Promise<{ lis
         <Link href="/mi-puesto/tienda" className={buttonVariants({ variant: "secondary" })}>Mi tienda</Link>
         <Link href={`/@${tienda.handle}`} className={buttonVariants({ variant: "ghost" })}>Ver mi tienda como la ven las demás</Link>
       </nav>
+      {completa && <PersonasSilenciadas storeId={tienda.id} filas={silenciadas} />}
     </>
   );
 }

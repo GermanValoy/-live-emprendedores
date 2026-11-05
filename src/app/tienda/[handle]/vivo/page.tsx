@@ -5,6 +5,8 @@ import { cache, Suspense } from "react";
 import { EstadoVacio } from "@/components/estado-vacio";
 import { buttonVariants } from "@/components/ui/button";
 import { SalaVivo } from "@/components/vivos/sala-vivo";
+import { obtenerConfigChat } from "@/lib/chat/config";
+import { mensajesIniciales, miSilencio } from "@/lib/chat/datos";
 import { obtenerUsuarioId } from "@/lib/auth/sesion";
 import { createClient } from "@/lib/supabase/server";
 import { idsSeguidos, listarProductos, obtenerTiendaPorHandle } from "@/lib/tiendas/datos";
@@ -38,11 +40,16 @@ async function Contenido({ params }: { params: Promise<{ handle: string }> }) {
   }
   const supabase = await createClient();
   const userId = await obtenerUsuarioId(supabase);
-  const [productos, vivo, config, seguidos] = await Promise.all([
+  const [productos, vivo, config, seguidos, configChat] = await Promise.all([
     listarProductos(supabase, tienda.id),
     vivoAbiertoDe(supabase, tienda.id),
     obtenerConfigVivo(supabase),
     userId ? idsSeguidos(supabase, userId) : Promise.resolve(new Set<string>()),
+    obtenerConfigChat(),
+  ]);
+  const [mensajes, silencio] = await Promise.all([
+    vivo ? mensajesIniciales(supabase, vivo.id, configChat.mensajes_al_entrar) : Promise.resolve([]),
+    userId ? miSilencio(supabase, tienda.id, userId) : Promise.resolve(null),
   ]);
   const visibles = productos
     .filter((p) => p.visible)
@@ -60,6 +67,7 @@ async function Contenido({ params }: { params: Promise<{ handle: string }> }) {
       config={config}
       siguiendo={seguidos.has(tienda.id)}
       conSesion={Boolean(userId)}
+      chat={{ config: configChat, mensajes, silencio, userId }}
     />
   );
 }

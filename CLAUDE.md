@@ -112,8 +112,9 @@ Programar los pagos como un **módulo intercambiable** (`lib/payments/` con una 
 - Fase 0: `users` (perfil público; se crea solo al registrarse).
 - Fase 1, Parte 1: `platform_admins` (administradores de la plataforma; el primero se carga a mano por SQL, sin escribir el email en el código), `invitations`, `stores` (con `handle` = @usuario y `onboarding_step` del recorrido de 4 pasos), `store_private_info` (alias, titular, dirección y horarios de retiro: **solo la dueña**), `store_delivery_options` (retiro en domicilio, envío gratis/fijo/a coordinar, punto de encuentro), `products`, `product_photos` (hasta 4 por producto), `follows`.
 - Fase 1, Parte 2: `live_sessions` (cada vivo, con su inicio y su fin), `store_streams` (la transmisión de cada tienda en Cloudflare, con la URL para transmitir (WHIP), que es una credencial: **solo la lee el servidor**) y `live_config` (los tiempos de la sala: 300 s sin conexión, 900 s fuera de pantalla y señal de vida cada 20 s; se cambian con un `UPDATE` en `live_config`, nunca en el código).
+- Fase 1, Parte 3: `chat_messages` (cada mensaje de la sala, con el nombre corto de quien lo escribió, si es de la feriante y si el moderador lo ocultó o alguien lo borró), `chat_silences` (personas silenciadas: por el moderador automático, por la feriante en su puesto o por la plataforma), `moderation_actions` (registro de cada cosa que se moderó: quién, a quién, qué mensaje), `chat_config` (los números del chat: 200 caracteres, 5 mensajes en 10 s, 3 frenados en 10 min silencian 10 min, 50 mensajes al entrar y 30 días de guardado; se cambian con un `UPDATE` en `chat_config`, nunca en el código) y `chat_blocked_words` (la lista de palabras del moderador; se amplía con un `INSERT`). `chat_config` y `chat_blocked_words` no se pueden leer desde el navegador, solo desde el servidor.
 
-**Planeadas**: `chat_messages` y `moderation_actions` (Parte 3), `live_codes`, `claims`, `orders`, `order_items`, `payment_reports` (Parte 4), `store_members` (ayudantes, Fase 2), `buyer_reputation` (Fase 2), `reports` (plataforma).
+**Planeadas**: `live_codes`, `claims`, `orders`, `order_items`, `payment_reports` (Parte 4), `store_members` (ayudantes, Fase 2), `buyer_reputation` (Fase 2), `reports` (plataforma).
 
 - Row Level Security activado en **todas** las tablas (RLS automático habilitado en Supabase; las tablas nuevas NO se exponen automáticamente a la Data API: dar permisos explícitos en cada migración).
 - Montos en **centavos enteros (ARS)**, nunca en float.
@@ -134,7 +135,7 @@ Programar los pagos como un **módulo intercambiable** (`lib/payments/` con una 
 
 ## 10. Plan por fases
 
-**Estado (2026-10-30)**: Fase 0 publicada · Fase 1: Parte 0 (pantallas), Parte 1 (tiendas y productos) y **Parte 2 (sala en vivo)** publicadas en `tuferialive.vercel.app` (la Parte 2, probada en celulares reales Android e iPhone el 2026-10-29). Lo siguiente: Parte 3 (chat).
+**Estado (2026-11-05)**: Fase 0 publicada · Fase 1: Parte 0 (pantallas), Parte 1 (tiendas y productos), Parte 2 (sala en vivo) y **Parte 3 (chat)** publicadas en `tuferialive.vercel.app` (la Parte 2, probada en celulares reales Android e iPhone el 2026-10-29; la Parte 3, el 2026-11-05). Antes de la Parte 4: arreglar que el Inicio muestre "EN VIVO" mientras el vivo espera a que vuelva la conexión, y que la dueña pueda seguir su propio puesto. Lo siguiente: Parte 4 (código en vivo y pagos).
 
 **Fase 0 – Bases**: proyecto Next.js + Supabase + Drizzle, sistema de diseño (colores, tipografía, componentes base), login, estructura de carpetas, CI con tests, deploy en Vercel.
 
@@ -159,12 +160,17 @@ Programar los pagos como un **módulo intercambiable** (`lib/payments/` con una 
 - Antes del piloto: proyecto de Supabase separado para producción y plan pago (para que no se pause). Hoy las pruebas automáticas escriben en la misma base que usa la página publicada: mientras corren, pueden aparecer vivos de prueba en "En vivo ahora". Separarlo antes de invitar a las feriantes.
 - Si la feriante cierra la página, el vivo queda como "vuelve en un momento" hasta 15 minutos (en vez de 5): el celular no distingue bien entre cerrar y salir un rato.
 - Si la transmisión no llega a Cloudflare (por ejemplo, Cloudflare caído), el vivo figura "EN VIVO" con la imagen en negro mientras su página esté abierta: mandar en la señal si realmente está transmitiendo.
-- La tabla de vivos muestra públicamente qué cuenta de administración cortó un vivo (`ended_by`, un identificador sin nombre) y el `device_id`: ocultar esas columnas.
-- Limitar la cantidad de señales por persona en `/mi-puesto/vivo/senal` (junto con el límite del chat, Parte 3).
+- La tabla de vivos muestra públicamente qué cuenta de administración cortó un vivo (`ended_by`, un identificador sin nombre) y el `device_id`, y también los contadores de señales (`signal_window_start`, `signal_count`): ocultar esas columnas.
+- Términos y condiciones (Parte 5): decir que los mensajes del chat se guardan 30 días para resolver reclamos y después se borran.
+- El límite de señales (30 por minuto) está escrito en la función de la base y no en `live_config`.
+- Si a la compradora la silencian o termina el vivo mientras escribe, se pierde lo que estaba escribiendo.
+- El moderador oculta cualquier @usuario (también si una compradora nombra a otra); revisar en el piloto si molesta.
+- Si se corta la conexión de la compradora, los mensajes que la feriante borró mientras tanto le siguen apareciendo hasta que recargue.
 - La portada y la sala reciben cada cambio de todos los vivos (optimizar cuando haya muchos).
 - Si la compradora entra a un vivo que ya perdió la señal, el aviso "se está reconectando" tarda hasta 40 s en aparecer.
 - Idea del dueño (2026-10-29): en "vuelve en un momento" y "se está reconectando", en vez de solo el cartel de texto, mostrar una animación o un indicador de carga con la portada o la foto del puesto.
 - Idea del dueño (2026-10-29): programar vivos (ya está en la Fase 2 como "vivos programados").
+- El chat usa los cambios de la tabla en tiempo real: cada mensaje se entrega a cada persona que mira. Con salas muy concurridas (por ejemplo 200 personas y 10 mensajes por segundo) puede pasarse del cupo de mensajes por segundo de Supabase según el plan; revisar el límite del plan antes del piloto y, si hace falta, pasar a un canal de difusión (Broadcast).
 
 - Agentes de IA como moderadores del chat y asistentes de la vendedora.
 - Más seguridad para emprendedoras y compradoras (verificación de identidad de la vendedora, reputación pública, denuncias).
@@ -189,8 +195,8 @@ Next.js es "todo en uno": cada pantalla y las acciones del servidor que usa vive
 | Carpeta | Qué hay | Rol |
 |---|---|---|
 | `src/app/` | Una carpeta por dirección de la app. Adentro: `page.tsx` (la pantalla) y, si guarda datos, `acciones.ts` (Server Actions: el "backend" de esa pantalla) | Pantallas + servidor |
-| `src/components/` | Piezas visuales reutilizables, agrupadas por tema: `ui/` (shadcn), `marca/`, `navegacion/`, `fotos/`, `tiendas/`, `vivos/` | Interfaz |
-| `src/lib/` | Lógica sin pantalla, por tema: `tiendas/` (validaciones, entregas, lecturas de datos, tipos), `vivos/` (Cloudflare Stream, transmitir y mirar con WebRTC, presencia, señal de vida, privacidad, reconexión y lecturas de datos), `fotos/` (compresión, subida, rutas), `format/` (plata y fechas), `auth/`, `supabase/` (conexiones), `red.ts` (errores de conexión) | Reglas del negocio |
+| `src/components/` | Piezas visuales reutilizables, agrupadas por tema: `ui/` (shadcn), `marca/`, `navegacion/`, `fotos/`, `tiendas/`, `vivos/`, `chat/` (burbujas, chat de la sala y del estudio, panel para moderar) | Interfaz |
+| `src/lib/` | Lógica sin pantalla, por tema: `tiendas/` (validaciones, entregas, lecturas de datos, tipos), `vivos/` (Cloudflare Stream, transmitir y mirar con WebRTC, presencia, señal de vida, privacidad, reconexión y lecturas de datos), `chat/` (moderador, nombre corto, configuración y lecturas del chat), `fotos/` (compresión, subida, rutas), `format/` (plata y fechas), `auth/`, `supabase/` (conexiones), `red.ts` (errores de conexión) | Reglas del negocio |
 | `src/db/schema.ts` | Descripción de las tablas (Drizzle) | Base de datos |
 | `drizzle/` | Migraciones numeradas: las `seguridad_*.sql` tienen los permisos (RLS), funciones y reglas de Storage | Base de datos |
 | `src/proxy.ts` | Corre antes de cada página: renueva la sesión y protege `/cuenta` y `/mi-puesto` | Seguridad |
@@ -207,10 +213,10 @@ Next.js es "todo en uno": cada pantalla y las acciones del servidor que usa vive
 | `/@usuario` y `/@usuario/p/[id]` | `src/app/tienda/[handle]/…` (reescritura en `next.config.ts`, porque en Next las carpetas con `@` son otra cosa) | Todos |
 | `/seguidos`, `/mis-compras` | `src/app/seguidos/`, `src/app/mis-compras/` | Compradoras |
 | `/mi-puesto` y debajo (`armar`, `tienda`, `productos`) | `src/app/mi-puesto/…` | Feriantes |
-| `/mi-puesto/vivo` | `src/app/mi-puesto/vivo/` | Feriantes |
+| `/mi-puesto/vivo` (con el chat y la moderación de un toque) y "Personas silenciadas" en Mi puesto | `src/app/mi-puesto/vivo/` | Feriantes |
 | `/@usuario/vivo` | `src/app/tienda/[handle]/vivo/` | Todos |
 | `/invitacion/[token]` | `src/app/invitacion/[token]/` | Quien recibe una invitación |
-| `/admin` | `src/app/admin/` | Solo administradores (los demás ven "no encontrada") |
+| `/admin` | `src/app/admin/` | Solo administradores (los demás ven "no encontrada"); incluye "Cuentas para revisar" del chat |
 | `/cuenta` | `src/app/cuenta/` | Con sesión |
 | `/auth/callback` | `src/app/auth/callback/route.ts` | Vuelta del login de Google |
 | `/diseno` | `src/app/diseno/` | Muestra interna del sistema de diseño |

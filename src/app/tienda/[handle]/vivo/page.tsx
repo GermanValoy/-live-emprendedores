@@ -66,6 +66,7 @@ async function Contenido({ params }: { params: Promise<{ handle: string }> }) {
       vivoInicial={vivo}
       config={config}
       siguiendo={seguidos.has(tienda.id)}
+      esMia={tienda.owner_id === userId}
       conSesion={Boolean(userId)}
       chat={{ config: configChat, mensajes, silencio, userId }}
     />

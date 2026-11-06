@@ -5,9 +5,9 @@ import { formatARS } from "@/lib/format/plata";
 import type { PuestoResumen } from "@/lib/tiendas/tipos";
 import { BotonSeguir } from "./boton-seguir";
 
-type Props = { puesto: PuestoResumen; siguiendo: boolean; conSesion: boolean; enVivo?: boolean };
+type Props = { puesto: PuestoResumen; siguiendo: boolean; conSesion: boolean; enVivo?: boolean; /** Es el puesto de quien mira: no se ofrece seguirlo. */ esMio?: boolean };
 
-export function TarjetaPuesto({ puesto, siguiendo, conSesion, enVivo = false }: Props) {
+export function TarjetaPuesto({ puesto, siguiendo, conSesion, enVivo = false, esMio = false }: Props) {
   return (
     <article className="flex flex-col gap-2 rounded-2xl border p-3">
       <div className="flex items-center gap-3">
@@ -27,7 +27,7 @@ export function TarjetaPuesto({ puesto, siguiendo, conSesion, enVivo = false }: 
             <span className="block truncate text-sm text-muted-foreground">{puesto.category} · {puesto.zone}</span>
           </span>
         </Link>
-        <BotonSeguir storeId={puesto.id} handle={puesto.handle} siguiendo={siguiendo} conSesion={conSesion} />
+        {!esMio && <BotonSeguir storeId={puesto.id} handle={puesto.handle} siguiendo={siguiendo} conSesion={conSesion} />}
       </div>
       {puesto.productos.length > 0 && (
         <div className="grid grid-cols-3 gap-1.5">

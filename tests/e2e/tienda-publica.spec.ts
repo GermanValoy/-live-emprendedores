@@ -72,6 +72,20 @@ test("seguir un puesto y verlo en Seguidos; dejar de seguir", async ({ page, con
   await expect(page.getByText("Todavía no seguís ningún puesto. Tocá Seguir en los que te gusten.")).toBeVisible();
 });
 
+test("la dueña no ve Seguir en su propio puesto", async ({ page, context }) => {
+  await context.addCookies(await cookiesDeSesion(feriante.sesion));
+  await page.goto(`/@${tienda.handle}`);
+  await expect(page.getByRole("heading", { name: "La Ropería de Mica" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Seguir" })).toHaveCount(0);
+  await page.goto("/");
+  const tarjeta = page.locator("article").filter({ has: page.locator(`a[href="/@${tienda.handle}"]`) });
+  await expect(tarjeta).toBeVisible();
+  await expect(tarjeta.getByRole("button", { name: "Seguir" })).toHaveCount(0);
+  await page.goto(`/@${tienda.handle}/vivo`);
+  await expect(page.getByRole("link", { name: "Cerrar la sala" })).toBeVisible({ timeout: 30_000 });
+  await expect(page.getByRole("button", { name: "Seguir" })).toHaveCount(0);
+});
+
 test("Seguir sin sesión pide entrar y vuelve a la tienda", async ({ page }) => {
   await page.goto(`/@${tienda.handle}`);
   const pedido = page.waitForRequest((r) => r.url().includes("/auth/v1/authorize?provider=google"));

@@ -46,7 +46,7 @@ async function Puestos() {
       ) : (
         <div className="flex flex-col gap-3">
           {puestos.map((p) => (
-            <TarjetaPuesto key={p.id} puesto={p} siguiendo={seguidos.has(p.id)} conSesion={Boolean(userId)} enVivo={enVivo.has(p.id)} />
+            <TarjetaPuesto key={p.id} puesto={p} siguiendo={seguidos.has(p.id)} conSesion={Boolean(userId)} enVivo={enVivo.has(p.id)} esMio={p.owner_id === userId} />
           ))}
         </div>
       )}

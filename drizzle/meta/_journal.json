@@ -134,6 +134,13 @@
       "when": 1793987218348,
       "tag": "0018_seguridad_codigos",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1793987970734,
+      "tag": "0019_anular_codigo_bloqueo",
+      "breakpoints": true
     }
   ]
 }

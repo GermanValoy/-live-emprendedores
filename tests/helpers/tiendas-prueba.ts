@@ -1,4 +1,5 @@
 import { randomBytes } from "node:crypto";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { clienteAdmin, type UsuarioPrueba } from "./usuario-prueba";
 
 export function handleAleatorio(prefijo = "prueba"): string {
@@ -106,4 +107,53 @@ export async function borrarFotosDeTienda(storeId: string): Promise<void> {
     const rutas = (data ?? []).map((f) => `${storeId}/${carpeta}/${f.name}`);
     if (rutas.length) await bucket.remove(rutas);
   }
+}
+
+/** Borra pedidos, informes de pago (y sus comprobantes), reclamos y códigos de un puesto. */
+export async function borrarCodigosDeTienda(storeId: string): Promise<void> {
+  const admin = clienteAdmin();
+  const { data: pedidos, error: errorPedidos } = await admin.from("orders").select("id").eq("store_id", storeId);
+  if (errorPedidos) throw errorPedidos;
+  const ids = (pedidos ?? []).map((p) => p.id as string);
+  if (ids.length) {
+    const { data: informes, error: errorInformes } = await admin.from("payment_reports").select("proof_path").in("order_id", ids);
+    if (errorInformes) throw errorInformes;
+    const rutas = (informes ?? []).map((i) => i.proof_path as string);
+    // El bucket de comprobantes se crea en la Tarea 3: si todavía no existe, no hay archivos que borrar.
+    if (rutas.length) await admin.storage.from("comprobantes").remove(rutas);
+    const borrarInformes = await admin.from("payment_reports").delete().in("order_id", ids);
+    if (borrarInformes.error) throw borrarInformes.error;
+  }
+  const borrarPedidos = await admin.from("orders").delete().eq("store_id", storeId);
+  if (borrarPedidos.error) throw borrarPedidos.error;
+  const { data: codigos, error: errorCodigos } = await admin.from("live_codes").select("id").eq("store_id", storeId);
+  if (errorCodigos) throw errorCodigos;
+  const codigoIds = (codigos ?? []).map((c) => c.id as string);
+  if (codigoIds.length) {
+    const borrarReclamos = await admin.from("claims").delete().in("code_id", codigoIds);
+    if (borrarReclamos.error) throw borrarReclamos.error;
+  }
+  const borrarCodigos = await admin.from("live_codes").delete().eq("store_id", storeId);
+  if (borrarCodigos.error) throw borrarCodigos.error;
+}
+
+/** Lanza un código como la feriante (con su propia sesión). La etiqueta es la palabra en mayúsculas. */
+export async function lanzarPrueba(
+  cliente: SupabaseClient,
+  vivoId: string,
+  palabra: string,
+  opciones: { precio?: number; cantidad?: number } = {},
+): Promise<{ id: string }> {
+  const { data, error } = await cliente.rpc("lanzar_codigo", {
+    p_vivo: vivoId,
+    p_palabra: palabra,
+    p_etiqueta: palabra.toUpperCase(),
+    p_precio: opciones.precio ?? 800000,
+    p_cantidad: opciones.cantidad ?? 1,
+    p_foto: null,
+    p_producto: null,
+    p_por_voz: false,
+  });
+  if (error) throw error;
+  return { id: (data as { id: string }).id };
 }

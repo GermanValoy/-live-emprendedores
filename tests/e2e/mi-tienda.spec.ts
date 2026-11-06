@@ -1,5 +1,5 @@
 import { expect, type Page, test } from "@playwright/test";
-import { borrarUsuarioPrueba, crearUsuarioPrueba, type UsuarioPrueba } from "../helpers/usuario-prueba";
+import { borrarUsuarioPrueba, clienteAdmin, crearUsuarioPrueba, type UsuarioPrueba } from "../helpers/usuario-prueba";
 import { borrarFotosDeTienda, crearTiendaPrueba, handleAleatorio } from "../helpers/tiendas-prueba";
 import { elegirFoto } from "./fotos";
 import { cookiesDeSesion } from "./sesion";
@@ -66,6 +66,16 @@ test("guarda el cobro y las entregas", async ({ page }) => {
   await page.reload();
   await expect(page.getByLabel("Costo del envío")).toHaveValue("2.500");
   await expect(page.getByLabel("Alias")).toHaveValue("mica.ropa.yb");
+});
+
+test("guarda el plazo para pagar", async ({ page }) => {
+  await abrirMiTienda(page);
+  await page.getByText("30 min", { exact: true }).click();
+  await page.getByRole("button", { name: "Guardar plazo" }).click();
+  await expect(page.getByText("Plazo para pagar guardado")).toBeVisible();
+  const { data, error } = await clienteAdmin().from("stores").select("payment_minutes").eq("id", tienda.id).single();
+  if (error) throw error;
+  expect(data.payment_minutes).toBe(30);
 });
 
 test("el selector de foto llega deshabilitado hasta que la página está activa", async ({ page }) => {

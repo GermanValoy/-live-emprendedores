@@ -9,6 +9,7 @@ import { entrarConGoogle } from "@/app/auth/acciones";
 import { EnVivo } from "@/components/marca/en-vivo";
 import { ChatEstudio } from "@/components/chat/chat-estudio";
 import { CodigosEstudio } from "@/components/codigos/codigos-estudio";
+import { PedidosVivo } from "@/components/codigos/pedidos-vivo";
 import type { ProductoResumen } from "@/components/codigos/panel-codigo";
 import type { Codigo } from "@/lib/codigos/tipos";
 import { BotonAvisarWhatsapp } from "@/components/vivos/boton-avisar-whatsapp";
@@ -482,7 +483,7 @@ function Estudio({
         </div>
       )}
 
-      {fase === "fin" && fin && <PantallaFin fin={fin} alSalirDeNuevo={alSalirDeNuevo} />}
+      {fase === "fin" && fin && <PantallaFin fin={fin} storeId={tienda.id} alSalirDeNuevo={alSalirDeNuevo} />}
     </div>
   );
 }
@@ -549,7 +550,7 @@ function PermisoCamara({ alProbar }: { alProbar(): void }) {
   );
 }
 
-function PantallaFin({ fin, alSalirDeNuevo }: { fin: Fin; alSalirDeNuevo(): void }) {
+function PantallaFin({ fin, storeId, alSalirDeNuevo }: { fin: Fin; storeId: string; alSalirDeNuevo(): void }) {
   // La hora se toma una sola vez al mostrar el resumen (solo se usa si el vivo no trae su hora de cierre).
   const [ahora] = useState(() => Date.now());
   const volver = (
@@ -606,6 +607,7 @@ function PantallaFin({ fin, alSalirDeNuevo }: { fin: Fin; alSalirDeNuevo(): void
           <dd className="text-3xl font-extrabold tabular-nums">{vivo.peak_viewers}</dd>
         </div>
       </dl>
+      <PedidosVivo storeId={storeId} vivoId={vivo.id} titulo="Pedidos de este vivo" />
       <div className="flex flex-col gap-3">
         {porAusencia && (
           <button

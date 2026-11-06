@@ -66,6 +66,7 @@ async function ContenidoMiPuesto({ searchParams }: { searchParams: Promise<{ lis
         </section>
       )}
       <nav aria-label="Opciones del puesto" className="grid gap-2">
+        {completa && <Link href="/mi-puesto/pedidos" className={buttonVariants({ variant: "secondary" })}>Pedidos</Link>}
         <Link href="/mi-puesto/productos" className={buttonVariants({ variant: "secondary" })}>Mis productos</Link>
         <Link href="/mi-puesto/tienda" className={buttonVariants({ variant: "secondary" })}>Mi tienda</Link>
         <Link href={`/@${tienda.handle}`} className={buttonVariants({ variant: "ghost" })}>Ver mi tienda como la ven las demás</Link>

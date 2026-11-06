@@ -6,6 +6,7 @@ import { formatFechaTucuman } from "@/lib/format/fecha";
 import { createClient } from "@/lib/supabase/server";
 import { obtenerMiTienda } from "@/lib/tiendas/datos";
 import { validarEntregas } from "@/lib/tiendas/entrega";
+import { PLAZOS_DE_PAGO } from "@/lib/tiendas/plazo";
 import type { EntregasEntrada, Resultado, Tienda } from "@/lib/tiendas/tipos";
 import {
   datosCobroSchema,
@@ -202,6 +203,17 @@ export async function guardarCobro(datos: { payment_alias: string; payment_holde
     .upsert({ store_id: tienda.id, ...r.data, updated_at: new Date().toISOString() }, { onConflict: "store_id" });
   if (error) return { ok: false, error: NO_GUARDO };
   await avanzarPaso(supabase, tienda, avanzarA);
+  return { ok: true };
+}
+
+/** Cuánto tiempo tiene quien gana un código para pagar (minutos). */
+export async function guardarPlazoDePago(minutos: number): Promise<Resultado> {
+  if (!PLAZOS_DE_PAGO.includes(minutos)) return { ok: false, error: "Elegí uno de los plazos." };
+  const sesion = await duenaActual();
+  if (!sesion) return { ok: false, error: NO_GUARDO };
+  const { supabase, tienda } = sesion;
+  const { error } = await supabase.from("stores").update({ payment_minutes: minutos }).eq("id", tienda.id);
+  if (error) return { ok: false, error: NO_GUARDO };
   return { ok: true };
 }
 

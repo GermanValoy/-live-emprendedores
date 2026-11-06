@@ -12,8 +12,12 @@ async function Contenido() {
   const userId = await obtenerUsuarioId(supabase);
   const tienda = userId ? await obtenerMiTienda(supabase, userId) : null;
   if (!tienda) redirect("/mi-puesto");
-  const [privados, opciones] = await Promise.all([obtenerDatosPrivados(supabase, tienda.id), obtenerEntregas(supabase, tienda.id)]);
-  return <SeccionesMiTienda tienda={tienda} privados={privados} opciones={opciones} />;
+  const [privados, opciones, plazo] = await Promise.all([
+    obtenerDatosPrivados(supabase, tienda.id),
+    obtenerEntregas(supabase, tienda.id),
+    supabase.from("stores").select("payment_minutes").eq("id", tienda.id).maybeSingle(),
+  ]);
+  return <SeccionesMiTienda tienda={tienda} privados={privados} opciones={opciones} plazo={(plazo.data?.payment_minutes as number | null) ?? null} />;
 }
 
 export default function MiTiendaPage() {

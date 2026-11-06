@@ -533,7 +533,7 @@ describe("códigos en vivo", () => {
       // El siguiente, aunque sea el código, recibe ráfaga: la función no publica ni reclama.
       const { publicado, reclamo } = await (async () => {
         const publicado = await publicarPrueba(caro.id, vivo, "ROJO");
-        const estadoChat = publicado.estado === "rafaga" ? "rafaga" : "silenciada";
+        const estadoChat = publicado.estado === "rafaga" ? "silenciada_rafaga" : "silenciada";
         return { publicado, reclamo: await procesarReclamo(clienteAdmin(), {
           userId: caro.id, vivoId: vivo, nombre: "Prueba P.", texto: "ROJO", mensajeId: null, estadoChat,
         }) };
@@ -550,13 +550,13 @@ describe("códigos en vivo", () => {
       expect(await reclamosDe(rojo.id)).toHaveLength(1);
     });
 
-    it("ráfaga no reclama", async () => {
+    it("ráfaga igual reclama", async () => {
       const rojo = await lanzarPrueba(mica.cliente, vivo, "rojo");
       const r = await procesarReclamo(clienteAdmin(), {
         userId: caro.id, vivoId: vivo, nombre: "Prueba P.", texto: "rojo", mensajeId: null, estadoChat: "rafaga",
       });
-      expect(r).toBeNull();
-      expect(await reclamosDe(rojo.id)).toEqual([]);
+      expect(r).toMatchObject({ estado: "ganaste" });
+      expect(await reclamosDe(rojo.id)).toHaveLength(1);
     });
   });
 });

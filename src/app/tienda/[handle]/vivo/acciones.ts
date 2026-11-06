@@ -61,7 +61,7 @@ export async function enviarMensaje(vivoId: string, texto: string): Promise<Resu
     const r = data as { estado: string; tipo?: SilencioChat; mensaje?: MensajeChat };
 
     // Si dice el código activo, se reclama enseguida (el mismo orden que los mensajes). Un fallo acá no tira el mensaje.
-    const reclamar = async (estadoChat: "ok" | "repetido" | "silenciada" | "rafaga", mensajeId: string | null) => {
+    const reclamar = async (estadoChat: "ok" | "repetido" | "silenciada" | "rafaga" | "silenciada_rafaga", mensajeId: string | null) => {
       try {
         return (await procesarReclamo(admin, { userId, vivoId, nombre, texto: limpio, mensajeId, estadoChat })) ?? undefined;
       } catch (e) {
@@ -75,7 +75,13 @@ export async function enviarMensaje(vivoId: string, texto: string): Promise<Resu
       return reclamo ? { ok: true, mensaje: r.mensaje, reclamo } : { ok: true, mensaje: r.mensaje };
     }
     if (r.estado === "cerrado") return { ok: false, motivo: "cerrado" };
-    if (r.estado === "rafaga") return { ok: false, motivo: "rafaga" };
+    if (r.estado === "rafaga") {
+      // Pasada del límite el mensaje no se publica, pero un reclamo igual cuenta, salvo que esté silenciada (ahí el límite protege).
+      const silencio = await admin.rpc("esta_silenciada", { p_store: vivo.data.store_id, p_user: userId });
+      if (silencio.error) throw silencio.error;
+      const reclamo = await reclamar(silencio.data ? "silenciada_rafaga" : "rafaga", null);
+      return { ok: false, motivo: "rafaga", ...(reclamo ? { reclamo } : {}) };
+    }
     if (r.estado === "silenciada") {
       const reclamo = await reclamar("silenciada", null);
       return { ok: false, motivo: "silenciada", silencio: r.tipo ?? "temporal", ...(reclamo ? { reclamo } : {}) };

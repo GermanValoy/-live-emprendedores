@@ -10,7 +10,8 @@ type Datos = {
   nombre: string;
   texto: string;
   mensajeId: string | null;
-  estadoChat: "ok" | "repetido" | "silenciada" | "rafaga";
+  /** "rafaga": se pasó del límite del chat, pero no está silenciada (el reclamo igual cuenta). "silenciada_rafaga": silenciada y pasada del límite (no reclama). */
+  estadoChat: "ok" | "repetido" | "silenciada" | "rafaga" | "silenciada_rafaga";
 };
 
 /**
@@ -18,8 +19,9 @@ type Datos = {
  * Devuelve null si no hay nada que avisarle a la compradora.
  */
 export async function procesarReclamo(admin: SupabaseClient, datos: Datos): Promise<ResultadoReclamo | null> {
-  // En ráfaga no se reclama: el mensaje ni se publicó.
-  if (datos.estadoChat === "rafaga") return null;
+  // Una silenciada que ya se pasó del límite no reclama (protege el límite de intentos de las silenciadas).
+  // Quien no está silenciada sí: los límites del chat no le roban un reclamo a nadie (el mensaje no se publica, pero el código cuenta).
+  if (datos.estadoChat === "silenciada_rafaga") return null;
 
   const { data: codigo, error } = await admin
     .from("live_codes")
@@ -50,7 +52,7 @@ export async function procesarReclamo(admin: SupabaseClient, datos: Datos): Prom
     p_user: datos.userId,
     p_codigo: codigo.id,
     p_nombre: datos.nombre,
-    p_mensaje: datos.estadoChat === "silenciada" ? null : datos.mensajeId,
+    p_mensaje: datos.estadoChat === "silenciada" || datos.estadoChat === "rafaga" ? null : datos.mensajeId,
     p_texto: datos.texto,
   });
   if (errorRpc) throw errorRpc;

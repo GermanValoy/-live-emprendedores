@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Foto } from "@/components/fotos/foto";
 import { EnVivo } from "@/components/marca/en-vivo";
+import { formatARS } from "@/lib/format/plata";
 import type { VivoEnPortada } from "@/lib/vivos/datos";
 
 /**
@@ -8,7 +9,7 @@ import type { VivoEnPortada } from "@/lib/vivos/datos";
  * `volviendo`: el vivo sigue abierto pero la feriante salió o se le cortó la conexión (no se muestra "EN VIVO").
  */
 export function TarjetaVivo({ item, volviendo = false }: { item: VivoEnPortada; volviendo?: boolean }) {
-  const { vivo, puesto } = item;
+  const { vivo, puesto, codigo } = item;
   const imagen = puesto.cover_path ?? puesto.avatar_path;
   return (
     <Link
@@ -33,6 +34,12 @@ export function TarjetaVivo({ item, volviendo = false }: { item: VivoEnPortada; 
       <span className="absolute inset-x-2 bottom-2 min-w-0">
         <span className="line-clamp-2 break-words text-sm font-extrabold leading-tight">{puesto.name}</span>
         <span className="block truncate text-xs opacity-90">{puesto.zone}</span>
+        {codigo && (
+          <span className="mt-1 flex items-baseline gap-1.5 rounded-lg bg-black/60 px-2 py-1 leading-none">
+            <b className="truncate text-sm font-extrabold tracking-wide text-codigo">{codigo.label}</b>
+            <b className="text-xs tabular-nums">{formatARS(codigo.price_cents)}</b>
+          </span>
+        )}
       </span>
     </Link>
   );

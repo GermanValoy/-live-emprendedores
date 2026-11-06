@@ -3,12 +3,13 @@
 import { cn } from "cn";
 import Link from "next/link";
 import { type ReactNode, useLayoutEffect, useRef, useState } from "react";
-import { ChatSala } from "@/components/chat/chat-sala";
+import { CodigosSala } from "@/components/codigos/codigos-sala";
 import { Foto } from "@/components/fotos/foto";
 import { EnVivo } from "@/components/marca/en-vivo";
 import { BotonSeguir } from "@/components/tiendas/boton-seguir";
 import { EsperaFeria } from "@/components/vivos/espera-feria";
 import { useSalaVivo } from "@/components/vivos/use-sala-vivo";
+import type { Codigo } from "@/lib/codigos/tipos";
 import type { ConfigChat, MensajeChat, SilencioChat } from "@/lib/chat/tipos";
 import { formatARS } from "@/lib/format/plata";
 import type { ConfigVivo, Vivo } from "@/lib/vivos/tipos";
@@ -25,6 +26,8 @@ type Props = {
   conSesion: boolean;
   /** El chat: valores, últimos mensajes, mi silencio y quién soy (null: visitante). */
   chat: { config: ConfigChat; mensajes: MensajeChat[]; silencio: SilencioChat; userId: string | null };
+  /** Los códigos del vivo al cargar y cuántos segundos queda el cartel de la ganadora. */
+  codigos: { iniciales: Codigo[]; cartelSegundos: number };
 };
 
 /** La sala de la compradora: espera animada, el vivo a pantalla completa y, al terminar, otra vez la espera. Siempre oscura. */
@@ -36,7 +39,7 @@ export function SalaVivo(props: Props) {
   return <Sala key={visita} {...props} />;
 }
 
-function Sala({ tienda, productos, vivoInicial, config, siguiendo, esMia, conSesion, chat }: Props) {
+function Sala({ tienda, productos, vivoInicial, config, siguiendo, esMia, conSesion, chat, codigos }: Props) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const { vivo, estado, mirando, reproduccion, sinSonido, activarSonido, canalListo } = useSalaVivo(tienda.id, vivoInicial, config, videoRef);
   const abierto = estado === "en-vivo" || estado === "vuelve-pronto" || estado === "reconectando-feriante";
@@ -134,8 +137,9 @@ function Sala({ tienda, productos, vivoInicial, config, siguiendo, esMia, conSes
 
       {/* El chat vive mientras el vivo está abierto; al terminar se va con el resto de la sala en vivo. */}
       {abierto && vivo && (
-        <ChatSala
+        <CodigosSala
           key={vivo.id}
+          codigos={codigos}
           vivo={{ id: vivo.id, storeId: tienda.id }}
           inicial={chat.mensajes}
           silencioInicial={chat.silencio}

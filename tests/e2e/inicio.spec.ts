@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { borrarUsuarioPrueba, clienteAdmin, crearUsuarioPrueba, type UsuarioPrueba } from "../helpers/usuario-prueba";
-import { borrarVivosDeTienda, crearTiendaPrueba, crearTransmisionPrueba } from "../helpers/tiendas-prueba";
+import { borrarCodigosDeTienda, borrarVivosDeTienda, crearTiendaPrueba, crearTransmisionPrueba, lanzarPrueba } from "../helpers/tiendas-prueba";
 
 test("el inicio muestra la marca y el eslogan", async ({ page }) => {
   await page.goto("/");
@@ -50,8 +50,22 @@ test.describe("con un vivo", () => {
   });
 
   test.afterEach(async () => {
+    await borrarCodigosDeTienda(tienda.id);
     await borrarVivosDeTienda(tienda.id);
     await borrarUsuarioPrueba(mica.id);
+  });
+
+  test("la tarjeta muestra el código que se está vendiendo", async ({ page }) => {
+    const { data, error } = await mica.cliente.rpc("abrir_vivo", { p_store: tienda.id, p_device: crypto.randomUUID() });
+    if (error) throw error;
+    await page.goto("/");
+    await expect(page.locator('[data-canal="listo"]')).toBeAttached({ timeout: 30_000 });
+    const tarjeta = page.locator(`a[href="/@${tienda.handle}/vivo"]`).first();
+    await expect(tarjeta).toBeVisible({ timeout: 30_000 });
+    await expect(tarjeta.getByText("ROJO")).toHaveCount(0);
+    await lanzarPrueba(mica.cliente, data as string, "rojo");
+    await expect(tarjeta.getByText("ROJO", { exact: true })).toBeVisible({ timeout: 30_000 });
+    await expect(tarjeta.getByText("$8.000")).toBeVisible();
   });
 
   test("muestra el vivo y lo saca al terminar", async ({ page }) => {

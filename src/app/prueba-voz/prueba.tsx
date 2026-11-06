@@ -10,7 +10,7 @@ type Reconocedor = {
   lang: string;
   continuous: boolean;
   interimResults: boolean;
-  start: () => void;
+  start: (pista?: MediaStreamTrack) => void;
   stop: () => void;
   onresult: ((e: { resultIndex: number; results: ArrayLike<{ isFinal: boolean; 0: { transcript: string } }> }) => void) | null;
   onerror: ((e: { error: string }) => void) | null;
@@ -20,6 +20,9 @@ type Reconocedor = {
   onspeechstart: (() => void) | null;
   onspeechend: (() => void) | null;
 };
+
+type Modo = "pausa" | "soltar" | "pista" | "nube";
+const NOMBRES: Record<Modo, string> = { pausa: "A (pausar)", soltar: "B (soltar)", pista: "C (pasar audio)", nube: "D (Cloudflare)" };
 
 // Hora para medir demoras (se usa solo en respuesta a toques, no al dibujar).
 const reloj = () => performance.now();
@@ -39,8 +42,8 @@ export function PruebaVoz() {
   const [errores, setErrores] = useState<string[]>([]);
   // Cambia cuando el walkie-talkie devuelve el micrófono con una pista nueva (para rehacer el medidor).
   const [versionMic, setVersionMic] = useState(0);
-  const [apretado, setApretado] = useState<"pausa" | "soltar" | null>(null);
-  const walkie = useRef<{ modo: "pausa" | "soltar"; desde: number; texto: string; r: Reconocedor } | null>(null);
+  const [apretado, setApretado] = useState<Modo | null>(null);
+  const walkie = useRef<{ modo: Modo; desde: number; texto: string; r?: Reconocedor; grabador?: MediaRecorder } | null>(null);
 
   const anotarError = (m: string) => setErrores((e) => [`${new Date().toLocaleTimeString("es-AR")} · ${m}`, ...e].slice(0, 25));
 
@@ -138,26 +141,33 @@ export function PruebaVoz() {
 
   // WALKIE-TALKIE: mientras se mantiene apretado, la "transmisión" le presta el micrófono al reconocimiento.
   // "pausa": solo apaga la pista (no suelta el micrófono). "soltar": la corta y al terminar pide una nueva.
-  function apretar(modo: "pausa" | "soltar") {
+  // "pista": no toca el micrófono; le pasa al reconocimiento la misma pista de audio de la transmisión.
+  // "nube": graba una copia de la pista y la manda a Whisper de Cloudflare.
+  function apretar(modo: Modo) {
     if (!stream || walkie.current) return;
+    const pista = stream.getAudioTracks()[0];
+    if (!pista) return anotarError("No hay pista de audio.");
+    const desde = reloj();
+    if (modo === "nube") return grabarParaNube(pista, desde);
     const w = window as unknown as { SpeechRecognition?: new () => Reconocedor; webkitSpeechRecognition?: new () => Reconocedor };
     const Clase = w.SpeechRecognition ?? w.webkitSpeechRecognition;
     if (!Clase) return anotarError("Este navegador NO tiene reconocimiento de voz.");
-    for (const t of stream.getAudioTracks()) {
-      if (modo === "pausa") t.enabled = false;
-      else {
-        t.stop();
-        stream.removeTrack(t);
+    if (modo === "pausa" || modo === "soltar") {
+      for (const t of stream.getAudioTracks()) {
+        if (modo === "pausa") t.enabled = false;
+        else {
+          t.stop();
+          stream.removeTrack(t);
+        }
       }
     }
     const r = new Clase();
     r.lang = "es-AR";
     r.continuous = true;
     r.interimResults = true;
-    const desde = reloj();
     walkie.current = { modo, desde, texto: "", r };
     setApretado(modo);
-    anotarError(`walkie (${modo === "pausa" ? "pausar" : "soltar"}): apretado`);
+    anotarError(`walkie ${NOMBRES[modo]}: apretado`);
     r.onstart = () => anotarError(`walkie: arrancó a los ${Math.round(reloj() - desde)} ms`);
     r.onaudiostart = () => anotarError("walkie: le llega audio");
     r.onspeechstart = () => anotarError("walkie: detectó que alguien habla");
@@ -171,14 +181,59 @@ export function PruebaVoz() {
       setParcial(texto.trim());
     };
     r.onend = () => void devolverMicrofono();
-    try { r.start(); } catch (err) { anotarError(`walkie no arrancó: ${(err as Error).message}`); void devolverMicrofono(); }
+    try {
+      if (modo === "pista") r.start(pista);
+      else r.start();
+    } catch (err) {
+      anotarError(`walkie no arrancó: ${(err as Error).name} ${(err as Error).message}`);
+      void devolverMicrofono();
+    }
+  }
+
+  function grabarParaNube(pista: MediaStreamTrack, desde: number) {
+    const tipo = ["audio/webm;codecs=opus", "audio/mp4", "audio/webm"].find((t) => MediaRecorder.isTypeSupported(t));
+    let grabador: MediaRecorder;
+    try {
+      grabador = new MediaRecorder(new MediaStream([pista]), tipo ? { mimeType: tipo } : undefined);
+    } catch (err) {
+      return anotarError(`nube: no se pudo grabar: ${(err as Error).message}`);
+    }
+    const pedazos: Blob[] = [];
+    grabador.ondataavailable = (e) => { if (e.data.size) pedazos.push(e.data); };
+    grabador.onstop = async () => {
+      const audio = new Blob(pedazos, { type: grabador.mimeType });
+      anotarError(`nube: mandando ${Math.round(audio.size / 1024)} KB (${grabador.mimeType})…`);
+      setParcial("Entendiendo…");
+      const t0 = reloj();
+      try {
+        const r = await fetch("/prueba-voz/transcribir", { method: "POST", body: audio });
+        const j = (await r.json()) as { texto?: string; error?: string; ms?: number };
+        if (j.error) anotarError(`nube error: ${j.error}`);
+        else {
+          const texto = j.texto ?? "";
+          anotarError(`nube: respondió en ${Math.round(reloj() - t0)} ms (Cloudflare ${j.ms} ms): "${texto}"`);
+          if (texto) setFrases((f) => [{ texto, entendido: entender(texto), hora: new Date().toLocaleTimeString("es-AR") }, ...f].slice(0, 20));
+        }
+      } catch (err) {
+        anotarError(`nube: falló el envío: ${(err as Error).message}`);
+      }
+      walkie.current = null;
+      setApretado(null);
+      setParcial("");
+    };
+    walkie.current = { modo: "nube", desde, texto: "", grabador };
+    setApretado("nube");
+    anotarError("walkie D (Cloudflare): grabando (la transmisión sigue con sonido)");
+    grabador.start();
   }
 
   function soltar() {
     const actual = walkie.current;
     if (!actual) return;
     anotarError(`walkie: soltado después de ${Math.round(reloj() - actual.desde)} ms`);
-    actual.r.stop(); // el resultado final llega después; al terminar se devuelve el micrófono
+    if (actual.grabador) {
+      if (actual.grabador.state === "recording") actual.grabador.stop();
+    } else actual.r?.stop(); // el resultado final llega después; al terminar se devuelve el micrófono
   }
 
   async function devolverMicrofono() {
@@ -192,7 +247,9 @@ export function PruebaVoz() {
       anotarError(`walkie resultado: "${actual.texto}"`);
     } else anotarError("walkie: no entendió nada");
     const t0 = reloj();
-    if (actual.modo === "pausa") {
+    if (actual.modo === "pista") {
+      anotarError("walkie: la transmisión nunca soltó el micrófono");
+    } else if (actual.modo === "pausa") {
       for (const t of stream.getAudioTracks()) t.enabled = true;
       anotarError("walkie: micrófono de la transmisión reactivado");
     } else {
@@ -250,7 +307,7 @@ export function PruebaVoz() {
 
       {stream && !escuchando && (
         <div className="grid grid-cols-2 gap-2">
-          {(["pausa", "soltar"] as const).map((modo) => (
+          {(["pista", "nube", "pausa", "soltar"] as const).map((modo) => (
             <button
               key={modo}
               type="button"
@@ -261,7 +318,7 @@ export function PruebaVoz() {
               disabled={apretado !== null && apretado !== modo}
               className={`select-none touch-none rounded-2xl p-4 text-center font-bold text-white disabled:opacity-40 ${apretado === modo ? "bg-red-600" : "bg-primary"}`}
             >
-              🎤 {apretado === modo ? "Hablá… (soltá al terminar)" : `Mantené apretado ${modo === "pausa" ? "(A: pausar)" : "(B: soltar)"}`}
+              🎤 {apretado === modo ? "Hablá… (soltá al terminar)" : `Mantené apretado ${NOMBRES[modo]}`}
             </button>
           ))}
         </div>

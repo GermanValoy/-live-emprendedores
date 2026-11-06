@@ -12,6 +12,12 @@ describe("restante", () => {
     const r = restante(new Date(ahora + 892_000).toISOString(), ahora);
     expect(r).toEqual({ ms: 892_000, texto: "14:52" });
   });
+  it("desde la hora usa h:mm:ss", () => {
+    expect(restante(new Date(ahora + 3_599_000).toISOString(), ahora).texto).toBe("59:59");
+    expect(restante(new Date(ahora + 3_600_000).toISOString(), ahora).texto).toBe("1:00:00");
+    expect(restante(new Date(ahora + 7_199_000).toISOString(), ahora).texto).toBe("1:59:59");
+    expect(restante(new Date(ahora + 86_399_000).toISOString(), ahora).texto).toBe("23:59:59");
+  });
   it("nunca es negativo", () => {
     expect(restante(new Date(ahora - 5000).toISOString(), ahora)).toEqual({ ms: 0, texto: "0:00" });
   });

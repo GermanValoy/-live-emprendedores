@@ -5,15 +5,22 @@ import { ChatSala } from "@/components/chat/chat-sala";
 import { AvisoReclamo, textoAviso } from "@/components/codigos/aviso-reclamo";
 import { CartelGanadora } from "@/components/codigos/cartel-ganadora";
 import { TarjetaCodigo } from "@/components/codigos/tarjeta-codigo";
+import { PagosSala } from "@/components/codigos/pagos-sala";
 import { useCodigosVivo } from "@/components/codigos/use-codigos-vivo";
 import type { Codigo, ResultadoReclamo } from "@/lib/codigos/tipos";
+import type { OpcionEntrega } from "@/lib/tiendas/tipos";
 
 type PropsChat = Parameters<typeof ChatSala>[0];
 
 const claveGanadora = (c: Codigo | null) => (c?.last_winner_at ? `${c.id}:${c.last_winner_at}` : null);
 
 /** El chat de la sala junto con lo que tiene que ver con el código: tarjeta, cartel de la ganadora y respuestas al reclamo. */
-export function CodigosSala({ codigos: { iniciales, cartelSegundos }, ...chat }: Omit<PropsChat, "hayCodigoActivo"> & { codigos: { iniciales: Codigo[]; cartelSegundos: number } }) {
+export function CodigosSala({
+  codigos: { iniciales, cartelSegundos, entregas, tienda },
+  ...chat
+}: Omit<PropsChat, "hayCodigoActivo"> & {
+  codigos: { iniciales: Codigo[]; cartelSegundos: number; entregas: OpcionEntrega[]; tienda: { name: string; zone: string } };
+}) {
   const { activo, codigos } = useCodigosVivo(chat.vivo.id, iniciales);
   // Lo que ya estaba ganado al entrar no se festeja de nuevo: el cartel es para las ganadoras que ocurren mientras se mira.
   const [claveAlEntrar] = useState(() => claveGanadora(ultimaGanada(iniciales.filter((c) => c.live_session_id === chat.vivo.id))));
@@ -28,7 +35,12 @@ export function CodigosSala({ codigos: { iniciales, cartelSegundos }, ...chat }:
       <ChatSala
         {...chat}
         hayCodigoActivo={Boolean(activo)}
-        entreMedio={(ultimoReclamo) => <ZonaCodigo ultimoReclamo={ultimoReclamo} activo={activo} codigos={codigos} />}
+        entreMedio={(ultimoReclamo) => (
+          <>
+            <ZonaCodigo ultimoReclamo={ultimoReclamo} activo={activo} codigos={codigos} />
+            <PagosSala vivoId={chat.vivo.id} userId={chat.userId} codigos={codigos} tienda={tienda} entregas={entregas} />
+          </>
+        )}
       />
     </>
   );
@@ -51,7 +63,7 @@ function ZonaCodigo({ ultimoReclamo, activo, codigos }: { ultimoReclamo: Resulta
     setVisto({
       respuesta: ultimoReclamo,
       numero: visto.numero + 1,
-      // Gancho para la Tarea 8: acá se sabe que ganó (y cuál código); el panel de pago se engancha con este mismo dato.
+      // Se recuerda cuál código ganó, para avisarle si la feriante lo anula. El panel de pago lo mueven sus pedidos (PagosSala).
       ganoCodigo: ultimoReclamo?.estado === "ganaste" ? (activo?.id ?? null) : visto.ganoCodigo,
     });
   }

@@ -12,10 +12,11 @@ import { useSalaVivo } from "@/components/vivos/use-sala-vivo";
 import type { Codigo } from "@/lib/codigos/tipos";
 import type { ConfigChat, MensajeChat, SilencioChat } from "@/lib/chat/tipos";
 import { formatARS } from "@/lib/format/plata";
+import type { OpcionEntrega } from "@/lib/tiendas/tipos";
 import type { ConfigVivo, Vivo } from "@/lib/vivos/tipos";
 
 type Props = {
-  tienda: { id: string; handle: string; name: string; avatar_path: string | null; live_schedule_note: string | null };
+  tienda: { id: string; handle: string; name: string; zone: string; avatar_path: string | null; live_schedule_note: string | null };
   /** Hasta 3 productos visibles, con su primera foto. */
   productos: { id: string; price_cents: number; foto: string | null }[];
   vivoInicial: Vivo | null;
@@ -28,6 +29,8 @@ type Props = {
   chat: { config: ConfigChat; mensajes: MensajeChat[]; silencio: SilencioChat; userId: string | null };
   /** Los códigos del vivo al cargar y cuántos segundos queda el cartel de la ganadora. */
   codigos: { iniciales: Codigo[]; cartelSegundos: number };
+  /** Las formas de entrega del puesto, para elegirla al ganar un código. */
+  entregas: OpcionEntrega[];
 };
 
 /** La sala de la compradora: espera animada, el vivo a pantalla completa y, al terminar, otra vez la espera. Siempre oscura. */
@@ -39,7 +42,7 @@ export function SalaVivo(props: Props) {
   return <Sala key={visita} {...props} />;
 }
 
-function Sala({ tienda, productos, vivoInicial, config, siguiendo, esMia, conSesion, chat, codigos }: Props) {
+function Sala({ tienda, productos, vivoInicial, config, siguiendo, esMia, conSesion, chat, codigos, entregas }: Props) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const { vivo, estado, mirando, reproduccion, sinSonido, activarSonido, canalListo } = useSalaVivo(tienda.id, vivoInicial, config, videoRef);
   const abierto = estado === "en-vivo" || estado === "vuelve-pronto" || estado === "reconectando-feriante";
@@ -139,7 +142,7 @@ function Sala({ tienda, productos, vivoInicial, config, siguiendo, esMia, conSes
       {abierto && vivo && (
         <CodigosSala
           key={vivo.id}
-          codigos={codigos}
+          codigos={{ ...codigos, entregas, tienda: { name: tienda.name, zone: tienda.zone } }}
           vivo={{ id: vivo.id, storeId: tienda.id }}
           inicial={chat.mensajes}
           silencioInicial={chat.silencio}

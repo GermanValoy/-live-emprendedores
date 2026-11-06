@@ -11,7 +11,7 @@ import { obtenerConfigChat } from "@/lib/chat/config";
 import { mensajesIniciales, miSilencio } from "@/lib/chat/datos";
 import { obtenerUsuarioId } from "@/lib/auth/sesion";
 import { createClient } from "@/lib/supabase/server";
-import { idsSeguidos, listarProductos, obtenerTiendaPorHandle } from "@/lib/tiendas/datos";
+import { idsSeguidos, listarProductos, obtenerEntregas, obtenerTiendaPorHandle } from "@/lib/tiendas/datos";
 import { handleDeRuta } from "@/lib/tiendas/validacion";
 import { obtenerConfigVivo, vivoAbiertoDe } from "@/lib/vivos/datos";
 
@@ -48,13 +48,14 @@ async function Contenido({ params }: { params: Promise<{ handle: string }> }) {
   }
   const supabase = await createClient();
   const userId = await obtenerUsuarioId(supabase);
-  const [productos, vivo, config, seguidos, configChat, configCodigo] = await Promise.all([
+  const [productos, vivo, config, seguidos, configChat, configCodigo, entregas] = await Promise.all([
     listarProductos(supabase, tienda.id),
     vivoAbiertoDe(supabase, tienda.id),
     obtenerConfigVivo(supabase),
     userId ? idsSeguidos(supabase, userId) : Promise.resolve(new Set<string>()),
     obtenerConfigChat(),
     obtenerConfigCodigo(),
+    obtenerEntregas(supabase, tienda.id),
   ]);
   const [mensajes, silencio, codigos] = await Promise.all([
     vivo ? mensajesIniciales(supabase, vivo.id, configChat.mensajes_al_entrar) : Promise.resolve([]),
@@ -69,7 +70,7 @@ async function Contenido({ params }: { params: Promise<{ handle: string }> }) {
   return (
     <SalaVivo
       tienda={{
-        id: tienda.id, handle: tienda.handle, name: tienda.name,
+        id: tienda.id, handle: tienda.handle, name: tienda.name, zone: tienda.zone,
         avatar_path: tienda.avatar_path, live_schedule_note: tienda.live_schedule_note,
       }}
       productos={visibles}
@@ -80,6 +81,7 @@ async function Contenido({ params }: { params: Promise<{ handle: string }> }) {
       conSesion={Boolean(userId)}
       chat={{ config: configChat, mensajes, silencio, userId }}
       codigos={{ iniciales: codigos, cartelSegundos: configCodigo.cartel_ganadora_segundos }}
+      entregas={entregas}
     />
   );
 }

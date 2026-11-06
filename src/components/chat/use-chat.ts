@@ -5,6 +5,7 @@ import { enviarMensaje } from "@/app/tienda/[handle]/vivo/acciones";
 import { mensajesIniciales, miSilencio } from "@/lib/chat/datos";
 import { limpiarTexto } from "@/lib/chat/moderar";
 import type { MensajeChat, SilencioChat } from "@/lib/chat/tipos";
+import type { ResultadoReclamo } from "@/lib/codigos/tipos";
 import { alServidor } from "@/lib/red";
 import { createClient } from "@/lib/supabase/client";
 
@@ -45,6 +46,7 @@ export function useChat(
   const [silencio, setSilencio] = useState<SilencioChat>(silencioInicial);
   const [aviso, setAviso] = useState<string | null>(null);
   const [canalListo, setCanalListo] = useState(false);
+  const [ultimoReclamo, setUltimoReclamo] = useState<ResultadoReclamo | null>(null);
   const vivoId = vivo?.id ?? null;
   const storeId = vivo?.storeId ?? null;
   const avisoTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -124,6 +126,13 @@ export function useChat(
     async (idLocal: string, texto: string) => {
       if (!vivoId) return;
       const r = await alServidor(() => enviarMensaje(vivoId, texto));
+      // Si lo que escribió era (o casi era) el código, el servidor cuenta qué pasó.
+      if ("reclamo" in r && r.reclamo) {
+        setUltimoReclamo(r.reclamo);
+        if (r.reclamo.estado === "pista") {
+          mostrarAviso(r.reclamo.tipo === "nombra" ? `¿Lo querés? Escribí ${r.reclamo.codigo}` : `¿Quisiste escribir ${r.reclamo.codigo}? Escribilo de nuevo`);
+        }
+      }
       const fallo = () => setMensajes((a) => a.map((i) => (i.id === idLocal ? { ...i, estado: "error" as const } : i)));
       if (r.ok) {
         // Se reemplaza lo pendiente por el mensaje del servidor (sin duplicarlo si ya llegó por el canal).
@@ -176,5 +185,5 @@ export function useChat(
     [mensajes, intentar],
   );
 
-  return { mensajes, enviar, reintentar, silencio, aviso, canalListo };
+  return { mensajes, enviar, reintentar, silencio, aviso, canalListo, ultimoReclamo };
 }

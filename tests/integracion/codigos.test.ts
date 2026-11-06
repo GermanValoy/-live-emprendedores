@@ -1,8 +1,12 @@
-import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { procesarReclamo } from "@/lib/codigos/reclamar";
 import { borrarUsuarioPrueba, clienteAdmin, clienteAnonimo, crearUsuarioPrueba, type UsuarioPrueba } from "../helpers/usuario-prueba";
 import {
-  borrarCodigosDeTienda, borrarVivosDeTienda, crearTiendaPrueba, crearTransmisionPrueba, lanzarPrueba, reclamarPrueba,
+  borrarChatDeTienda, borrarCodigosDeTienda, borrarVivosDeTienda, publicarPrueba, crearTiendaPrueba, crearTransmisionPrueba, lanzarPrueba, reclamarPrueba,
 } from "../helpers/tiendas-prueba";
+
+// El módulo es solo de servidor (`import "server-only"`); fuera de Next esa marca tira error, así que acá se neutraliza.
+vi.mock("server-only", () => ({}));
 
 /** Cuentas sin sesión (solo hace falta su id) para las pruebas de muchas compradoras a la vez. */
 async function crearCompradoras(cuantas: number): Promise<string[]> {
@@ -438,6 +442,97 @@ describe("códigos en vivo", () => {
       } finally {
         await admin.from("chat_messages").delete().eq("id", mensaje.data.id);
       }
+    });
+  });
+
+  describe("reclamar desde el chat", () => {
+    const desdeElChat = async (u: UsuarioPrueba, texto: string) => {
+      const publicado = await publicarPrueba(u.id, vivo, texto);
+      const mensaje = publicado.mensaje as { id: string; hidden_reason: string | null } | undefined;
+      const estadoChat =
+        publicado.estado === "silenciada" ? "silenciada" : mensaje?.hidden_reason === "repetido" ? "repetido" : "ok";
+      const reclamo = await procesarReclamo(clienteAdmin(), {
+        userId: u.id, vivoId: vivo, nombre: "Prueba P.", texto, mensajeId: mensaje?.id ?? null, estadoChat,
+      });
+      return { publicado, reclamo };
+    };
+    const reclamosDe = async (codigoId: string) => {
+      const { data, error } = await clienteAdmin().from("claims").select("user_id, status").eq("code_id", codigoId);
+      if (error) throw error;
+      return data;
+    };
+
+    beforeEach(async () => {
+      await borrarChatDeTienda(tienda.id);
+    });
+    afterAll(async () => {
+      await borrarChatDeTienda(tienda.id);
+    });
+
+    it("reclamo desde el chat", async () => {
+      const rojo = await lanzarPrueba(mica.cliente, vivo, "rojo");
+      const { publicado, reclamo } = await desdeElChat(caro, "ROJO!!");
+      expect(publicado.estado).toBe("ok");
+      expect(reclamo).toMatchObject({ estado: "ganaste" });
+      const { data } = await clienteAdmin().from("chat_messages").select("id").eq("live_session_id", vivo).eq("user_id", caro.id);
+      expect(data).toHaveLength(1);
+      expect(await reclamosDe(rojo.id)).toEqual([{ user_id: caro.id, status: "ganadora" }]);
+    });
+
+    it("la hora del reclamo es la del mensaje", async () => {
+      const rojo = await lanzarPrueba(mica.cliente, vivo, "rojo");
+      const { publicado } = await desdeElChat(caro, "rojo");
+      const { data } = await clienteAdmin().from("claims").select("claimed_at, message_id").eq("code_id", rojo.id).single();
+      expect(data?.message_id).toBe((publicado.mensaje as { id: string }).id);
+    });
+
+    it("pregunta no reclama", async () => {
+      const rojo = await lanzarPrueba(mica.cliente, vivo, "rojo");
+      const { reclamo } = await desdeElChat(caro, "¿el rojo qué talle es?");
+      expect(reclamo).toEqual({ estado: "pista", tipo: "nombra", codigo: "ROJO" });
+      expect(await reclamosDe(rojo.id)).toEqual([]);
+    });
+
+    it("un error de tipeo no reclama (aceptar_casi apagado) y avisa", async () => {
+      const amarillo = await lanzarPrueba(mica.cliente, vivo, "amarillo");
+      const { reclamo } = await desdeElChat(caro, "amarilo");
+      expect(reclamo).toEqual({ estado: "pista", tipo: "casi", codigo: "AMARILLO" });
+      expect(await reclamosDe(amarillo.id)).toEqual([]);
+    });
+
+    it("sin código activo no pasa nada", async () => {
+      expect((await desdeElChat(caro, "rojo")).reclamo).toBeNull();
+    });
+
+    it("silenciada reclama", async () => {
+      const rojo = await lanzarPrueba(mica.cliente, vivo, "rojo");
+      const silencio = await clienteAdmin()
+        .from("chat_silences")
+        .insert({ store_id: tienda.id, user_id: caro.id, kind: "sala", source: "feriante", created_by: mica.id });
+      expect(silencio.error).toBeNull();
+      const { publicado, reclamo } = await desdeElChat(caro, "ROJO");
+      expect(publicado.estado).toBe("silenciada");
+      expect(reclamo).toMatchObject({ estado: "ganaste" });
+      const { data } = await clienteAdmin().from("chat_messages").select("id").eq("live_session_id", vivo).eq("user_id", caro.id);
+      expect(data).toEqual([]);
+      const { data: r } = await clienteAdmin().from("claims").select("message_id").eq("code_id", rojo.id).single();
+      expect(r?.message_id).toBeNull();
+    });
+
+    it("repetido", async () => {
+      const rojo = await lanzarPrueba(mica.cliente, vivo, "rojo");
+      expect((await desdeElChat(caro, "ROJO")).reclamo).toMatchObject({ estado: "ganaste" });
+      expect((await desdeElChat(caro, "ROJO")).reclamo).toEqual({ estado: "repetido" });
+      expect(await reclamosDe(rojo.id)).toHaveLength(1);
+    });
+
+    it("ráfaga no reclama", async () => {
+      const rojo = await lanzarPrueba(mica.cliente, vivo, "rojo");
+      const r = await procesarReclamo(clienteAdmin(), {
+        userId: caro.id, vivoId: vivo, nombre: "Prueba P.", texto: "rojo", mensajeId: null, estadoChat: "rafaga",
+      });
+      expect(r).toBeNull();
+      expect(await reclamosDe(rojo.id)).toEqual([]);
     });
   });
 });

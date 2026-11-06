@@ -84,3 +84,10 @@ export const CAMPOS_CODIGO =
 /** Columnas de `orders` para `.select(...)`. */
 export const CAMPOS_PEDIDO =
   "id, claim_id, code_id, store_id, live_session_id, buyer_id, buyer_name, price_cents, delivery_kind, shipping_cents, total_cents, payment_alias, payment_holder, buyer_whatsapp, status, cancel_reason, deadline, created_at, reported_at, confirmed_at, updated_at";
+
+/** Lo que le pasó a una compradora cuando escribió (o casi escribió) el código en el chat. */
+export type ResultadoReclamo =
+  | { estado: "ganaste"; pedido: string }
+  | { estado: "lista"; lugar: number; ganadora: string }
+  | { estado: "agotado" | "repetido" | "propio" }
+  | { estado: "pista"; tipo: "nombra" | "casi"; codigo: string };

@@ -14,6 +14,8 @@ type Props = {
   config: ConfigChat;
   userId: string | null;
   handle: string;
+  /** Hay un código activo en el vivo: una compradora silenciada igual puede escribirlo para reclamarlo. */
+  hayCodigoActivo?: boolean;
 };
 
 /** Cuántos caracteres antes del máximo aparece el contador. */
@@ -23,7 +25,7 @@ const BOTON_ROUND =
   "flex size-11 shrink-0 items-center justify-center rounded-full bg-black/55 text-xl outline-none backdrop-blur focus-visible:ring-3 focus-visible:ring-white/70";
 
 /** El chat sobre el video: burbujas abajo, campo para escribir y botón para esconderlo. */
-export function ChatSala({ vivo, inicial, silencioInicial, config, userId, handle }: Props) {
+export function ChatSala({ vivo, inicial, silencioInicial, config, userId, handle, hayCodigoActivo = false }: Props) {
   const { mensajes, enviar, reintentar, silencio, aviso, canalListo } = useChat(vivo, inicial, silencioInicial, userId);
   const [visible, setVisible] = useState(true);
   const [texto, setTexto] = useState("");
@@ -86,7 +88,7 @@ export function ChatSala({ vivo, inicial, silencioInicial, config, userId, handl
                   Entrá con Google para escribir
                 </button>
               </form>
-            ) : silencio ? (
+            ) : silencio && !hayCodigoActivo ? (
               <p role="status" className="flex min-h-11 items-center rounded-full bg-black/55 px-4 text-sm font-bold backdrop-blur">
                 {silencio === "temporal" ? "No podés escribir en este vivo por un rato." : "No podés escribir en esta sala."}
               </p>
@@ -96,7 +98,7 @@ export function ChatSala({ vivo, inicial, silencioInicial, config, userId, handl
                   <input
                     value={texto}
                     onChange={(e) => alCambiar(e.target.value)}
-                    placeholder="Escribí un mensaje…"
+                    placeholder={silencio ? "Escribí el código" : "Escribí un mensaje o un código…"}
                     aria-label="Mensaje"
                     autoComplete="off"
                     enterKeyHint="send"

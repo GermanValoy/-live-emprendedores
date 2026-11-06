@@ -18,14 +18,15 @@ function limpiar(texto: string): string {
 /**
  * La forma en que se guarda y se compara un código: limpio, y con las tandas de
  * 3 o más letras iguales reducidas a una ("rojooo" → "rojo"; "ll" y "rr" quedan).
+ * Los números no se tocan ("1000" sigue siendo "1000").
  */
 export function normalizarCodigo(texto: string): string {
-  return limpiar(texto).replace(/([a-z0-9])\1{2,}/g, "$1");
+  return limpiar(texto).replace(/([a-z])\1{2,}/g, "$1");
 }
 
 /** Reduce todas las tandas de letras iguales a una sola (para comparar errores de tipeo). */
 function reducir(texto: string): string {
-  return texto.replace(/([a-z0-9])\1+/g, "$1");
+  return texto.replace(/([a-z])\1+/g, "$1");
 }
 
 /** ¿La distancia de edición entre `a` y `b` es 0 o 1? */
@@ -50,7 +51,10 @@ export function leerReclamo(texto: string, palabra: string): Lectura {
   const rodeado = ` ${normal} `;
 
   if (rodeado.includes(` ${palabra} `)) {
-    const resto = rodeado.replace(` ${palabra} `, " ").trim().split(" ").filter(Boolean);
+    // Repetir el código ("rojo rojo!!") sigue siendo reclamarlo: se sacan todas las veces que aparece.
+    let sinCodigo = rodeado;
+    while (sinCodigo.includes(` ${palabra} `)) sinCodigo = sinCodigo.replace(` ${palabra} `, " ");
+    const resto = sinCodigo.trim().split(" ").filter(Boolean);
     const esReclamo =
       !/[?¿]/.test(texto) &&
       normal.split(" ").length <= MAXIMO_PALABRAS &&

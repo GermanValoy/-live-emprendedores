@@ -12,6 +12,8 @@ const SIEMPRE_RECLAMO = [
   "ROJO mío",
   "me lo llevo rojo",
   "rojo para mi",
+  "rojo rojo!!",
+  "ROJO ROJO ROJO",
 ];
 
 describe("leerReclamo", () => {
@@ -41,6 +43,11 @@ describe("leerReclamo", () => {
     expect(leerReclamo("blanco", "amarillo")).toBe("nada");
   });
 
+  it("no confunde números con errores de tipeo ni los reduce", () => {
+    expect(leerReclamo("10", "1000")).not.toBe("reclamo");
+    expect(leerReclamo("1000", "1000")).toBe("reclamo");
+  });
+
   it("no corrige palabras de menos de 4 letras", () => {
     expect(leerReclamo("sal", "sol")).toBe("nada");
   });
@@ -49,6 +56,10 @@ describe("leerReclamo", () => {
 describe("normalizarCodigo", () => {
   it("saca signos, tildes y mayúsculas", () => {
     expect(normalizarCodigo("¡MARIPOSA!")).toBe("mariposa");
+  });
+  it("no reduce tandas de dígitos", () => {
+    expect(normalizarCodigo("1000")).toBe("1000");
+    expect(normalizarCodigo("1000000")).toBe("1000000");
   });
   it("reduce tandas de 3 o más letras iguales y deja ll y rr", () => {
     expect(normalizarCodigo("rojooo")).toBe("rojo");

@@ -15,6 +15,10 @@ type Reconocedor = {
   onresult: ((e: { resultIndex: number; results: ArrayLike<{ isFinal: boolean; 0: { transcript: string } }> }) => void) | null;
   onerror: ((e: { error: string }) => void) | null;
   onend: (() => void) | null;
+  onstart: (() => void) | null;
+  onaudiostart: (() => void) | null;
+  onspeechstart: (() => void) | null;
+  onspeechend: (() => void) | null;
 };
 
 const pesos = new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS", maximumFractionDigits: 0 });
@@ -31,7 +35,7 @@ export function PruebaVoz() {
   const [frases, setFrases] = useState<{ texto: string; entendido: Entendido; hora: string }[]>([]);
   const [errores, setErrores] = useState<string[]>([]);
 
-  const anotarError = (m: string) => setErrores((e) => [`${new Date().toLocaleTimeString("es-AR")} · ${m}`, ...e].slice(0, 8));
+  const anotarError = (m: string) => setErrores((e) => [`${new Date().toLocaleTimeString("es-AR")} · ${m}`, ...e].slice(0, 25));
 
 
   // Medidor del micrófono de la "transmisión": si baja a cero al escuchar, el reconocimiento le sacó el micrófono.
@@ -77,7 +81,9 @@ export function PruebaVoz() {
   function empezar() {
     const w = window as unknown as { SpeechRecognition?: new () => Reconocedor; webkitSpeechRecognition?: new () => Reconocedor };
     const Clase = w.SpeechRecognition ?? w.webkitSpeechRecognition;
-    if (!Clase) return anotarError("Este navegador no tiene reconocimiento de voz.");
+    if (!Clase) return anotarError("Este navegador NO tiene reconocimiento de voz.");
+    anotarError(`Navegador: ${navigator.userAgent.slice(0, 140)}`);
+    anotarError(stream ? "Escuchando CON la cámara prendida" : "Escuchando SIN la cámara");
     const r = new Clase();
     r.lang = "es-AR";
     r.continuous = true;
@@ -89,16 +95,20 @@ export function PruebaVoz() {
         if (!res) continue;
         const texto = res[0].transcript.trim();
         if (res.isFinal) {
+          anotarError(`resultado: "${texto}"`);
           setFrases((f) => [{ texto, entendido: entender(texto), hora: new Date().toLocaleTimeString("es-AR") }, ...f].slice(0, 20));
         } else interino += texto + " ";
       }
       setParcial(interino);
     };
-    r.onerror = (e) => {
-      if (e.error !== "no-speech" && e.error !== "aborted") anotarError(`Reconocimiento: ${e.error}`);
-    };
+    r.onerror = (e) => anotarError(`error: ${e.error}`);
+    r.onstart = () => anotarError("arrancó");
+    r.onaudiostart = () => anotarError("le llega audio");
+    r.onspeechstart = () => anotarError("detectó que alguien habla");
+    r.onspeechend = () => anotarError("dejó de oír voz");
     // El celular corta la escucha cada tanto: si seguimos escuchando, se vuelve a arrancar sola.
     r.onend = () => {
+      anotarError("se detuvo");
       if (escuchandoRef.current) {
         try { r.start(); } catch (err) { anotarError(`No se pudo seguir escuchando: ${(err as Error).message}`); }
       }
@@ -154,11 +164,12 @@ export function PruebaVoz() {
       {escuchando ? (
         <Button variant="outline" onClick={parar}>Dejar de escuchar</Button>
       ) : (
-        <Button onClick={empezar} disabled={!stream}>2. Empezar a escuchar</Button>
+        <Button onClick={empezar}>2. Empezar a escuchar{stream ? "" : " (sin cámara)"}</Button>
       )}
 
       {errores.length > 0 && (
-        <ul className="rounded-xl bg-destructive/10 p-3 text-xs">
+        <ul className="rounded-xl bg-secondary p-3 text-xs">
+          <li className="font-bold">Registro (lo más nuevo arriba)</li>
           {errores.map((e, i) => <li key={i}>{e}</li>)}
         </ul>
       )}

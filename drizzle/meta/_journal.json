@@ -183,6 +183,13 @@
       "when": 1793996692891,
       "tag": "0025_seguridad_plazo_de_pago",
       "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "7",
+      "when": 1793997904024,
+      "tag": "0026_sumar_voz",
+      "breakpoints": true
     }
   ]
 }

@@ -112,15 +112,22 @@ export async function borrarFotosDeTienda(storeId: string): Promise<void> {
 /** Borra pedidos, informes de pago (y sus comprobantes), reclamos y códigos de un puesto. */
 export async function borrarCodigosDeTienda(storeId: string): Promise<void> {
   const admin = clienteAdmin();
-  const { data: pedidos, error: errorPedidos } = await admin.from("orders").select("id").eq("store_id", storeId);
+  const { data: pedidos, error: errorPedidos } = await admin.from("orders").select("id, buyer_id").eq("store_id", storeId);
   if (errorPedidos) throw errorPedidos;
   const ids = (pedidos ?? []).map((p) => p.id as string);
   if (ids.length) {
-    const { data: informes, error: errorInformes } = await admin.from("payment_reports").select("proof_path").in("order_id", ids);
-    if (errorInformes) throw errorInformes;
-    const rutas = (informes ?? []).map((i) => i.proof_path as string);
-    // El bucket de comprobantes se crea en la Tarea 3: si todavía no existe, no hay archivos que borrar.
-    if (rutas.length) await admin.storage.from("comprobantes").remove(rutas);
+    // Los comprobantes están en <compradora>/<pedido>/: se borran también los subidos sin informar.
+    const comprobantes = admin.storage.from("comprobantes");
+    for (const p of pedidos ?? []) {
+      const carpeta = `${p.buyer_id as string}/${p.id as string}`;
+      const { data: archivos, error: errorLista } = await comprobantes.list(carpeta, { limit: 1000 });
+      if (errorLista) throw errorLista;
+      const rutas = (archivos ?? []).map((f) => `${carpeta}/${f.name}`);
+      if (rutas.length) {
+        const { error: errorBorrar } = await comprobantes.remove(rutas);
+        if (errorBorrar) throw errorBorrar;
+      }
+    }
     const borrarInformes = await admin.from("payment_reports").delete().in("order_id", ids);
     if (borrarInformes.error) throw borrarInformes.error;
   }

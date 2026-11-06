@@ -13,6 +13,9 @@ describe("entender", () => {
     ["esta remera sale 7500 y se la llevan con el código sol", 7500, "SOL"],
     ["cuatro mil doscientos cincuenta código lila", 4250, "LILA"],
     ["un vestido de 15000, código verde", 15000, "VERDE"],
+    ["$8.000, código rojo", 8000, "ROJO"],
+    ["8.000. Código rojo", 8000, "ROJO"],
+    ["Sale 8.500, código sol.", 8500, "SOL"],
   ])("%s", (texto, precio, codigo) => {
     expect(entender(texto)).toEqual({ precio, codigo });
   });

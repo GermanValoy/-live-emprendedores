@@ -67,4 +67,20 @@ describe("DetectorVoz", () => {
     const ultimos = primera.slice(primera.length - 2 * TASA);
     expect(Array.from(frases[1]!.muestras.slice(0, 2 * TASA))).toEqual(Array.from(ultimos));
   });
+
+  it("una palabra corta después del corte de 12 s no se pierde", () => {
+    const { frases, durante } = armar();
+    durante(12_000, 0.2);
+    expect(frases).toHaveLength(1);
+    durante(300, 0.2);
+    durante(900, 0.001);
+    expect(frases).toHaveLength(2);
+  });
+
+  it("si después del corte solo queda el solape, no se vuelve a mandar", () => {
+    const { frases, durante } = armar();
+    durante(12_000, 0.2);
+    durante(900, 0.001);
+    expect(frases).toHaveLength(1);
+  });
 });

@@ -66,6 +66,6 @@ export function entender(texto: string): Entendido {
     if (resto[0]) codigo = resto[0].toUpperCase();
   }
   const antes = pos >= 0 ? tokens.slice(0, pos) : tokens;
-  const precio = precioEn(antes.map((t) => t.replace(/[.,]+$/, (m) => (/\d[.,]\d/.test(t) ? m : "")))) ?? null;
+  const precio = precioEn(antes.map((t) => t.replace(/[.,]+$/, ""))) ?? null;
   return { precio, codigo };
 }

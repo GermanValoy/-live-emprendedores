@@ -7,7 +7,7 @@ export type ConfigDetector = {
   minimoVozMs: number;
 };
 
-type Trozo = { datos: Float32Array; ms: number };
+type Trozo = { datos: Float32Array; ms: number; voz: boolean };
 
 const msDe = (t: Trozo[]) => t.reduce((a, x) => a + x.ms, 0);
 const unir = (trozos: Trozo[]): Float32Array => {
@@ -27,6 +27,7 @@ export class DetectorVoz {
   private enFrase = false;
   private ultimaVozMs = 0;
   private vozMs = 0;
+  private nuevoMs = 0; // voz que todavía no se mandó en ninguna frase
   private inicioMs = 0;
   private ruido = 0;
 
@@ -41,8 +42,8 @@ export class DetectorVoz {
     for (const d of bloque) suma += d * d;
     const rms = Math.sqrt(suma / (bloque.length || 1));
     const ms = (bloque.length / this.tasa) * 1000;
-    const trozo: Trozo = { datos: bloque, ms };
     const hayVoz = rms > Math.max(this.config.umbralMinimo, this.ruido * 2.5);
+    const trozo: Trozo = { datos: bloque, ms, voz: hayVoz };
 
     if (!this.enFrase) {
       this.ruido = this.ruido * 0.95 + rms * 0.05;
@@ -57,6 +58,7 @@ export class DetectorVoz {
       this.previo = [];
       this.ultimaVozMs = ahoraMs;
       this.vozMs = ms;
+      this.nuevoMs = ms;
       return "escuchando";
     }
 
@@ -64,6 +66,7 @@ export class DetectorVoz {
     if (hayVoz) {
       this.ultimaVozMs = ahoraMs;
       this.vozMs += ms;
+      this.nuevoMs += ms;
     }
     if (ahoraMs - this.ultimaVozMs > this.config.silencioFinMs) {
       this.entregar();
@@ -79,12 +82,14 @@ export class DetectorVoz {
       for (let i = todo.length - 1; i >= 0 && msDe(resto) < this.config.solapeMs; i--) resto = [todo[i]!, ...resto];
       this.inicioMs = ahoraMs - msDe(resto);
       this.frase = resto;
-      this.vozMs = 0; // lo que ya se mandó no cuenta como voz nueva
+      // La voz del solape cuenta para el mínimo, pero hace falta voz nueva para volver a mandar.
+      this.vozMs = msDe(resto.filter((t) => t.voz));
+      this.nuevoMs = 0;
     }
     return "escuchando";
   }
 
   private entregar() {
-    if (this.vozMs >= this.config.minimoVozMs) this.alFrase(unir(this.frase), this.inicioMs);
+    if (this.nuevoMs > 0 && this.vozMs >= this.config.minimoVozMs) this.alFrase(unir(this.frase), this.inicioMs);
   }
 }

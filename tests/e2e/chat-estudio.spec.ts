@@ -65,7 +65,7 @@ async function entrar(browser: Browser, tienda: Puesto, usuario: UsuarioPrueba):
 }
 
 async function escribir(page: Page, texto: string) {
-  await page.getByPlaceholder("Escribí un mensaje…").fill(texto);
+  await page.getByPlaceholder(/^Escribí un mensaje/).fill(texto);
   await page.getByRole("button", { name: "Enviar" }).click();
 }
 
@@ -120,7 +120,7 @@ test("silenciar 10 minutos", async ({ browser }) => {
   await estudio.getByRole("button", { name: /Silenciar 10 minutos/ }).click();
   await expect(estudio.getByText("Silenciaste a Carolina M. por 10 minutos.")).toBeVisible();
   await expect(paginaCaro.getByText("No podés escribir en este vivo por un rato.")).toBeVisible({ timeout: 10_000 });
-  await expect(paginaCaro.getByPlaceholder("Escribí un mensaje…")).toHaveCount(0);
+  await expect(paginaCaro.getByPlaceholder("Escribí un mensaje o un código…")).toHaveCount(0);
 });
 
 test("silenciar en mi sala", async ({ browser }) => {

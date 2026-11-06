@@ -39,6 +39,7 @@ Plataforma de ventas en vivo para emprendedoras y feriantes de **Tucumán, Argen
 | Auth | Supabase Auth: Google (Fase 0) + código por email (Fase 1). Sin SMS: el WhatsApp se pide como dato de contacto para las entregas, sin verificar |
 | Tiempo real | Supabase Realtime (chat, códigos, pedidos) |
 | Video | Cloudflare Stream — Live Inputs con WebRTC (WHIP para transmitir, WHEP para ver). RTMP opcional para OBS/Larix. Activado en la Fase 1 con el plan **Images & Stream de 0 USD/mes** (se paga 1 USD cada 1.000 minutos mirados; sin almacenamiento contratado). WebRTC es oficial desde el 2026-10-15, pero **no graba, no genera miniaturas ni informa cuánta gente mira** (eso lo resuelve la app). La URL para transmitir (WHIP) es una credencial: solo la ve la dueña del puesto |
+| Voz | Whisper de Cloudflare Workers AI (`CLOUDFLARE_AI_API_TOKEN`, solo en el servidor): la feriante dice "código rojo, ocho mil" y la app arma el código. Corta el audio en el celular, lo manda a `/mi-puesto/vivo/voz` y tiene un tope diario (`voice_usage`, valores en `code_config`) |
 | Archivos | Supabase Storage: bucket público `tienda-fotos` (fotos comprimidas en el celular a 400 y 1200 px, sin datos EXIF, carpeta por tienda). Comprobantes de pago en bucket privado (Fase 1, Parte 4) |
 | Tests | Vitest (unitarios) + Playwright (end-to-end) |
 | Observabilidad | Sentry (errores) + PostHog (métricas) — se configuran antes del piloto (Fase 1, Parte 5) |
@@ -55,6 +56,7 @@ SUPABASE_SECRET_KEY=
 DATABASE_URL=
 CLOUDFLARE_ACCOUNT_ID=
 CLOUDFLARE_STREAM_API_TOKEN=   # se crea en la Fase 1
+CLOUDFLARE_AI_API_TOKEN=       # Parte 4: la voz (Whisper de Cloudflare Workers AI); solo en el servidor
 ```
 
 Mantener un `.env.example` con los nombres y sin valores.
@@ -108,13 +110,15 @@ Programar los pagos como un **módulo intercambiable** (`lib/payments/` con una 
 
 ## 8. Modelo de datos inicial
 
-**Ya creadas** (migraciones en `drizzle/`):
+**Ya creadas** (migraciones en `drizzle/`, hasta la 0026):
 - Fase 0: `users` (perfil público; se crea solo al registrarse).
 - Fase 1, Parte 1: `platform_admins` (administradores de la plataforma; el primero se carga a mano por SQL, sin escribir el email en el código), `invitations`, `stores` (con `handle` = @usuario y `onboarding_step` del recorrido de 4 pasos), `store_private_info` (alias, titular, dirección y horarios de retiro: **solo la dueña**), `store_delivery_options` (retiro en domicilio, envío gratis/fijo/a coordinar, punto de encuentro), `products`, `product_photos` (hasta 4 por producto), `follows`.
 - Fase 1, Parte 2: `live_sessions` (cada vivo, con su inicio y su fin), `store_streams` (la transmisión de cada tienda en Cloudflare, con la URL para transmitir (WHIP), que es una credencial: **solo la lee el servidor**) y `live_config` (los tiempos de la sala: 300 s sin conexión, 900 s fuera de pantalla y señal de vida cada 20 s; se cambian con un `UPDATE` en `live_config`, nunca en el código).
 - Fase 1, Parte 3: `chat_messages` (cada mensaje de la sala, con el nombre corto de quien lo escribió, si es de la feriante y si el moderador lo ocultó o alguien lo borró), `chat_silences` (personas silenciadas: por el moderador automático, por la feriante en su puesto o por la plataforma), `moderation_actions` (registro de cada cosa que se moderó: quién, a quién, qué mensaje), `chat_config` (los números del chat: 200 caracteres, 5 mensajes en 10 s, 3 frenados en 10 min silencian 10 min, 50 mensajes al entrar y 30 días de guardado; se cambian con un `UPDATE` en `chat_config`, nunca en el código) y `chat_blocked_words` (la lista de palabras del moderador; se amplía con un `INSERT`). `chat_config` y `chat_blocked_words` no se pueden leer desde el navegador, solo desde el servidor.
 
-**Planeadas**: `live_codes`, `claims`, `orders`, `order_items`, `payment_reports` (Parte 4), `store_members` (ayudantes, Fase 2), `buyer_reputation` (Fase 2), `reports` (plataforma).
+- Fase 1, Parte 4: `code_config` (los números del código en vivo y de la voz: plazo de 15 minutos para pagar, cartel de la ganadora de 18 s, lista de espera de 5, si se aceptan códigos "casi" bien escritos, y los ajustes de la voz con su tope de 3 horas por día; se cambian con un `UPDATE` en `code_config`, nunca en el código; solo el servidor la lee), `live_codes` (cada código lanzado en un vivo: palabra, precio, foto, stock y estado), `claims` (cada reclamo: ganadora, en espera, anulada o caducada), `orders` (un pedido por prenda ganada, con su estado `por_pagar`, `pago_informado`, `en_revision`, `pagado`, `vencido` o `anulado`, y una **copia del alias** con el que se ganó), `payment_reports` (el "Ya pagué" con su comprobante y el WhatsApp de la compradora), `voice_usage` (cuánta voz se usó por día), `chat_silenced_attempts` (reclamos de personas silenciadas, para limitarles la ráfaga) y la columna `stores.payment_minutes` (el plazo de pago propio de cada feriante). Las funciones de la base (`lanzar_codigo`, `cerrar_codigo`, `anular_codigo`, `reclamar_codigo`, las de pedidos y `sumar_voz`) hacen el trabajo atómico; `vencer_pedidos` corre sola **cada minuto** (cron) y pasa la prenda a la siguiente de la lista. Comprobantes en el bucket **privado** `comprobantes`. Un pedido es una prenda de un código (pago por prenda): **no hay `order_items`** (llegan con el carrito del vivo, Fase 2). Una **falta** no tiene tabla: se deriva (pedido `vencido`, o `anulado` por "Ofrecer a otra").
+
+**Planeadas**: `store_members` (ayudantes, Fase 2), `buyer_reputation` (Fase 2), `reports` (plataforma).
 
 - Row Level Security activado en **todas** las tablas (RLS automático habilitado en Supabase; las tablas nuevas NO se exponen automáticamente a la Data API: dar permisos explícitos en cada migración).
 - Montos en **centavos enteros (ARS)**, nunca en float.
@@ -136,6 +140,8 @@ Programar los pagos como un **módulo intercambiable** (`lib/payments/` con una 
 ## 10. Plan por fases
 
 **Estado (2026-11-05)**: Fase 0 publicada · Fase 1: Parte 0 (pantallas), Parte 1 (tiendas y productos), Parte 2 (sala en vivo) y **Parte 3 (chat)** publicadas en `tuferialive.vercel.app` (la Parte 2, probada en celulares reales Android e iPhone el 2026-10-29; la Parte 3, el 2026-11-05). Arreglados después: el Inicio ya no muestra "EN VIVO" mientras el vivo espera que vuelva la feriante, y la dueña no puede seguir su propio puesto. Lo siguiente: Parte 4 (código en vivo y pagos).
+
+**Estado (2026-11-06)**: la **Parte 4 (código en vivo y pagos) está construida** en la rama `fase-1-parte-4-codigo-y-pagos`, con todas las pruebas automáticas pasando, pero **todavía no está publicada**: falta cargar `CLOUDFLARE_AI_API_TOKEN` en Vercel (Production) y probarla en celulares reales Android e iPhone (voz con la prenda en las manos, reclamos desde varios celulares y una transferencia real de prueba). Lo siguiente: Parte 5 (preparación del piloto).
 
 **Fase 0 – Bases**: proyecto Next.js + Supabase + Drizzle, sistema de diseño (colores, tipografía, componentes base), login, estructura de carpetas, CI con tests, deploy en Vercel.
 
@@ -171,6 +177,19 @@ Programar los pagos como un **módulo intercambiable** (`lib/payments/` con una 
 - Idea del dueño (2026-10-29): programar vivos (ya está en la Fase 2 como "vivos programados").
 - El chat usa los cambios de la tabla en tiempo real: cada mensaje se entrega a cada persona que mira. Con salas muy concurridas (por ejemplo 200 personas y 10 mensajes por segundo) puede pasarse del cupo de mensajes por segundo de Supabase según el plan; revisar el límite del plan antes del piloto y, si hace falta, pasar a un canal de difusión (Broadcast).
 
+- Balance de ventas del vivo (total vendido, por compradora): va a la Fase 2 (panel de ventas); hoy la feriante ve los pedidos por vivo en Pedidos.
+- Códigos "casi acertados" (ej. "rojoo"): hoy están apagados (`aceptar_casi` en `code_config`); definir con las feriantes si conviene prenderlos.
+- Cargar `CLOUDFLARE_AI_API_TOKEN` en Vercel para **Production** (sin eso la voz no responde y queda el botón + Nuevo código).
+- Probar la voz en iPhone (en Android anduvo; el iPhone puede comportarse distinto con el micrófono).
+- "Ofrecer a otra" es de un toque y sin confirmación (anota una falta a la compradora y está al lado de "Confirmar pago"): decidir con el dueño si pide confirmación.
+- Un silencio puesto por la plataforma igual deja reclamar códigos: confirmar si debe impedirlo.
+- El Inicio se recarga con cada cambio de códigos de toda la plataforma (optimizar cuando haya muchos vivos).
+- `chat_silenced_attempts` no tiene limpieza periódica (sumarla a la que borra el chat viejo).
+- Los comprobantes subidos cuando "Ya pagué" falla quedan sueltos en Storage (misma limpieza periódica que las fotos).
+- La voz usa `ScriptProcessor` (está obsoleto, pero es lo que funcionó en el Android real); cambiar a `AudioWorklet` cuando haya tiempo.
+- Las pruebas de integración comparten la base con el cron `vencer_pedidos` de cada minuto: rara vez una falla por el momento justo; repetirla sola.
+- Dos textos de la voz para que apruebe el dueño: "La voz no responde ahora. Usá + Nuevo código." y "Este celular no deja escuchar la voz. Usá + Nuevo código.".
+
 - Agentes de IA como moderadores del chat y asistentes de la vendedora.
 - Más seguridad para emprendedoras y compradoras (verificación de identidad de la vendedora, reputación pública, denuncias).
 - Videos promocionales para invitar feriantes (posible uso de HyperFrames).
@@ -194,8 +213,8 @@ Next.js es "todo en uno": cada pantalla y las acciones del servidor que usa vive
 | Carpeta | Qué hay | Rol |
 |---|---|---|
 | `src/app/` | Una carpeta por dirección de la app. Adentro: `page.tsx` (la pantalla) y, si guarda datos, `acciones.ts` (Server Actions: el "backend" de esa pantalla) | Pantallas + servidor |
-| `src/components/` | Piezas visuales reutilizables, agrupadas por tema: `ui/` (shadcn), `marca/`, `navegacion/`, `fotos/`, `tiendas/`, `vivos/`, `chat/` (burbujas, chat de la sala y del estudio, panel para moderar) | Interfaz |
-| `src/lib/` | Lógica sin pantalla, por tema: `tiendas/` (validaciones, entregas, lecturas de datos, tipos), `vivos/` (Cloudflare Stream, transmitir y mirar con WebRTC, presencia, señal de vida, privacidad, reconexión y lecturas de datos), `chat/` (moderador, nombre corto, configuración y lecturas del chat), `fotos/` (compresión, subida, rutas), `format/` (plata y fechas), `auth/`, `supabase/` (conexiones), `red.ts` (errores de conexión) | Reglas del negocio |
+| `src/components/` | Piezas visuales reutilizables, agrupadas por tema: `ui/` (shadcn), `marca/`, `navegacion/`, `fotos/`, `tiendas/`, `vivos/`, `chat/` (burbujas, chat de la sala y del estudio, panel para moderar), `codigos/` (crear y lanzar códigos, cartel y panel de pago, pedidos de la feriante, Mis compras) | Interfaz |
+| `src/lib/` | Lógica sin pantalla, por tema: `tiendas/` (validaciones, entregas, lecturas de datos, tipos), `vivos/` (Cloudflare Stream, transmitir y mirar con WebRTC, presencia, señal de vida, privacidad, reconexión y lecturas de datos), `chat/` (moderador, nombre corto, configuración y lecturas del chat), `fotos/` (compresión, subida, rutas), `format/` (plata y fechas), `auth/`, `supabase/` (conexiones), `codigos/` (reclamos, tipos, textos y lecturas de códigos y pedidos), `payments/` (módulo intercambiable de pagos: interfaz común y modo alias), `voz/` (detector de voz del micrófono, WAV y armado del código a partir de lo que se dijo), `red.ts` (errores de conexión) | Reglas del negocio |
 | `src/db/schema.ts` | Descripción de las tablas (Drizzle) | Base de datos |
 | `drizzle/` | Migraciones numeradas: las `seguridad_*.sql` tienen los permisos (RLS), funciones y reglas de Storage | Base de datos |
 | `src/proxy.ts` | Corre antes de cada página: renueva la sesión y protege `/cuenta` y `/mi-puesto` | Seguridad |
@@ -213,6 +232,9 @@ Next.js es "todo en uno": cada pantalla y las acciones del servidor que usa vive
 | `/seguidos`, `/mis-compras` | `src/app/seguidos/`, `src/app/mis-compras/` | Compradoras |
 | `/mi-puesto` y debajo (`armar`, `tienda`, `productos`) | `src/app/mi-puesto/…` | Feriantes |
 | `/mi-puesto/vivo` (con el chat y la moderación de un toque) y "Personas silenciadas" en Mi puesto | `src/app/mi-puesto/vivo/` | Feriantes |
+| `/mi-puesto/pedidos` | `src/app/mi-puesto/pedidos/` (los pagos para revisar y los pedidos agrupados por vivo; sus acciones están en `acciones.ts`) | Feriantes |
+| `/mi-puesto/vivo/voz` (solo POST) | `src/app/mi-puesto/vivo/voz/route.ts` (manda el audio a Whisper de Cloudflare y devuelve el texto; la clave nunca llega al navegador) | Servidor |
+| `/mis-compras` (con la tarjeta de pago de cada pedido) y el pago desde la sala | `src/app/mis-compras/`, `src/app/pedidos/acciones.ts` | Compradoras |
 | `/@usuario/vivo` | `src/app/tienda/[handle]/vivo/` | Todos |
 | `/invitacion/[token]` | `src/app/invitacion/[token]/` | Quien recibe una invitación |
 | `/admin` | `src/app/admin/` | Solo administradores (los demás ven "no encontrada"); incluye "Cuentas para revisar" del chat |

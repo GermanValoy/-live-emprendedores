@@ -33,6 +33,7 @@ function FilaPedido({ pedido, codigo }: { pedido: Pedido; codigo: CodigoDePedido
   const [trabajando, setTrabajando] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [masTiempo, setMasTiempo] = useState(false);
+  const [confirmaOfrecer, setConfirmaOfrecer] = useState(false);
   const [comprobante, setComprobante] = useState<string | null>(null);
 
   async function hacer(accion: () => Promise<Resultado>) {
@@ -41,7 +42,10 @@ function FilaPedido({ pedido, codigo }: { pedido: Pedido; codigo: CodigoDePedido
     const r = await alServidor(accion);
     setTrabajando(false);
     if (!r.ok) setError(r.error);
-    else setMasTiempo(false);
+    else {
+      setMasTiempo(false);
+      setConfirmaOfrecer(false);
+    }
   }
 
   async function verComprobante() {
@@ -90,12 +94,12 @@ function FilaPedido({ pedido, codigo }: { pedido: Pedido; codigo: CodigoDePedido
             </button>
           )}
           {pedido.status === "por_pagar" && (
-            <button type="button" disabled={trabajando} aria-expanded={masTiempo} onClick={() => setMasTiempo((v) => !v)} className={`${BOTON} bg-secondary text-secondary-foreground`}>
+            <button type="button" disabled={trabajando} aria-expanded={masTiempo} onClick={() => { setConfirmaOfrecer(false); setMasTiempo((v) => !v); }} className={`${BOTON} bg-secondary text-secondary-foreground`}>
               Darle más tiempo
             </button>
           )}
           {pedido.status !== "pago_informado" && (
-            <button type="button" disabled={trabajando} onClick={() => void hacer(() => ofrecerAOtra(pedido.id))} className={`${BOTON} border border-border bg-background text-foreground`}>
+            <button type="button" disabled={trabajando} aria-expanded={confirmaOfrecer} onClick={() => { setMasTiempo(false); setConfirmaOfrecer((v) => !v); }} className={`${BOTON} border border-border bg-background text-foreground`}>
               Ofrecer a otra
             </button>
           )}
@@ -108,6 +112,19 @@ function FilaPedido({ pedido, codigo }: { pedido: Pedido; codigo: CodigoDePedido
               {texto}
             </button>
           ))}
+        </div>
+      )}
+      {confirmaOfrecer && pedido.status !== "pago_informado" && (
+        <div role="group" aria-label="Confirmar ofrecer a otra" className="flex flex-col gap-2 rounded-xl bg-accent p-3">
+          <p className="text-sm font-semibold text-accent-foreground">{`¿Se la ofrecés a otra? A ${pedido.buyer_name} se le anota que no pagó.`}</p>
+          <div className="flex flex-wrap gap-2">
+            <button type="button" disabled={trabajando} onClick={() => void hacer(() => ofrecerAOtra(pedido.id))} className={`${BOTON} bg-primary text-primary-foreground`}>
+              Sí, ofrecer a otra
+            </button>
+            <button type="button" disabled={trabajando} onClick={() => setConfirmaOfrecer(false)} className={`${BOTON} bg-secondary text-secondary-foreground`}>
+              Cancelar
+            </button>
+          </div>
         </div>
       )}
       {error && <p role="alert" className="text-sm font-semibold text-destructive">{error}</p>}

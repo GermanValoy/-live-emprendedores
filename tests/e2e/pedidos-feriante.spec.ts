@@ -72,6 +72,12 @@ test("la feriante revisa un pago, lo rechaza y ofrece la prenda a la siguiente",
   await expect(page.getByRole("heading", { name: "Pedidos de este vivo" })).toBeVisible({ timeout: 30_000 });
   await expect(page.getByText("En revisión")).toBeVisible();
   await page.getByRole("button", { name: "Ofrecer a otra" }).click();
+  // Pide confirmación: cancelar no cambia nada; confirmar sí.
+  await expect(page.getByText(/¿Se la ofrecés a otra\? A .* se le anota que no pagó\./)).toBeVisible();
+  await page.getByRole("button", { name: "Cancelar" }).click();
+  await expect(page.locator('[data-estado="en_revision"]')).toHaveCount(1);
+  await page.getByRole("button", { name: "Ofrecer a otra" }).click();
+  await page.getByRole("button", { name: "Sí, ofrecer a otra" }).click();
   await expect(page.getByText("Luz L.")).toBeVisible({ timeout: 15_000 });
   await expect(page.locator('[data-estado="por_pagar"]')).toHaveCount(1);
   await expect(page.locator('[data-estado="anulado"]')).toHaveCount(1);

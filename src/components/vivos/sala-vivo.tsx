@@ -4,6 +4,7 @@ import { cn } from "cn";
 import Link from "next/link";
 import { type ReactNode, useLayoutEffect, useRef, useState } from "react";
 import { CodigosSala } from "@/components/codigos/codigos-sala";
+import { PagosTerminado } from "@/components/codigos/pagos-terminado";
 import { Foto } from "@/components/fotos/foto";
 import { EnVivo } from "@/components/marca/en-vivo";
 import { BotonSeguir } from "@/components/tiendas/boton-seguir";
@@ -93,6 +94,17 @@ function Sala({ tienda, productos, vivoInicial, config, siguiendo, esMia, conSes
                   ))}
                 </ul>
               </section>
+            )}
+            {/* Quien ganó una prenda sigue pudiendo pagarla aunque la feriante haya cortado. */}
+            {estado === "terminado" && vivo && (
+              <PagosTerminado
+                key={vivo.id}
+                vivoId={vivo.id}
+                userId={chat.userId}
+                iniciales={codigos.iniciales}
+                tienda={{ name: tienda.name, zone: tienda.zone }}
+                entregas={entregas}
+              />
             )}
             {estado === "terminado" && (
               <Link

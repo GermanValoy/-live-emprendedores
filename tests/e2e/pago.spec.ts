@@ -110,3 +110,22 @@ test("si se vence el plazo antes de enviar, se le avisa", async ({ browser }) =>
   await pagina.getByRole("dialog").getByRole("button", { name: "Enviar" }).click();
   await expect(pagina.getByText("Se te pasó el tiempo para pagar.")).toBeVisible({ timeout: 20_000 });
 });
+
+test("si la feriante termina el vivo, la ganadora sigue pudiendo pagar", async ({ browser }) => {
+  test.slow();
+  const { mica, tienda, pagina } = await ganarRojo(browser);
+  const vivo = (await clienteAdmin().from("live_sessions").select("id").eq("store_id", tienda.id).is("ended_at", null).single()).data?.id as string;
+  const fin = await mica.cliente.rpc("terminar_vivo", { p_vivo: vivo });
+  if (fin.error) throw fin.error;
+
+  // La sala pasa a "terminó": el panel de pago sigue (o se vuelve a abrir) y hay un link a Mis compras.
+  await expect(pagina.getByRole("link", { name: /Tenés un pedido de este vivo/ })).toBeVisible({ timeout: 20_000 });
+  await expect(pagina.getByRole("dialog", { name: "Tu pedido" })).toBeVisible({ timeout: 10_000 });
+  await expect(pagina.getByText("mica.ropa")).toBeVisible();
+
+  // Si lo cierra, puede volver a abrirlo.
+  await pagina.keyboard.press("Escape");
+  await expect(pagina.getByRole("dialog", { name: "Tu pedido" })).toHaveCount(0);
+  await pagina.getByRole("button", { name: /^Pagar / }).click();
+  await expect(pagina.getByRole("dialog", { name: "Tu pedido" })).toBeVisible();
+});

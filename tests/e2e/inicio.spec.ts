@@ -71,6 +71,42 @@ test.describe("con un vivo", () => {
     await expect(page.locator(`a[href="/@${tienda.handle}/vivo"]`)).toHaveCount(0, { timeout: 30_000 });
   });
 
+  test("si la feriante sale de la pantalla, la tarjeta dice que vuelve en un momento", async ({ page }) => {
+    const dispositivo = crypto.randomUUID();
+    const { data, error } = await mica.cliente.rpc("abrir_vivo", { p_store: tienda.id, p_device: dispositivo });
+    if (error) throw error;
+    const senal = async (fuera: boolean) => {
+      const { error: e } = await mica.cliente.rpc("senal_vivo", {
+        p_vivo: data as string, p_device: dispositivo, p_fuera: fuera, p_silenciada: false, p_mirando: 0,
+      });
+      if (e) throw e;
+    };
+    await page.goto("/");
+    await expect(page.locator('[data-canal="listo"]')).toBeAttached({ timeout: 30_000 });
+    const tarjeta = page.locator(`a[href="/@${tienda.handle}/vivo"]`).first();
+    await expect(tarjeta.getByText("EN VIVO", { exact: true })).toBeVisible({ timeout: 30_000 });
+    await senal(true);
+    await expect(tarjeta.getByText("Vuelve en un momento")).toBeVisible({ timeout: 30_000 });
+    await expect(tarjeta.getByText("EN VIVO", { exact: true })).toHaveCount(0);
+    await senal(false);
+    await expect(tarjeta.getByText("EN VIVO", { exact: true })).toBeVisible({ timeout: 30_000 });
+  });
+
+  test("si se corta la señal de la feriante, la tarjeta deja de decir EN VIVO", async ({ page }) => {
+    const { error } = await mica.cliente.rpc("abrir_vivo", { p_store: tienda.id, p_device: crypto.randomUUID() });
+    if (error) throw error;
+    await page.clock.install();
+    await page.goto("/");
+    const tarjeta = page.locator(`a[href="/@${tienda.handle}/vivo"]`).first();
+    await expect(tarjeta.getByText("EN VIVO", { exact: true })).toBeVisible({ timeout: 30_000 });
+    // Se espera a que la página esté andando en el navegador: recién ahí mide el reloj (si no, toma la hora adelantada).
+    await expect(page.locator('[data-canal="listo"]')).toBeAttached({ timeout: 30_000 });
+    await page.waitForTimeout(500);
+    // Sin señales nuevas: pasados los 40 s (el doble de cada cuánto llega la señal) se da por cortada.
+    await page.clock.fastForward("00:45");
+    await expect(tarjeta.getByText("Vuelve en un momento")).toBeVisible({ timeout: 15_000 });
+  });
+
   test("el puesto en vivo se indica en la lista de puestos", async ({ page }) => {
     const { error } = await mica.cliente.rpc("abrir_vivo", { p_store: tienda.id, p_device: crypto.randomUUID() });
     if (error) throw error;

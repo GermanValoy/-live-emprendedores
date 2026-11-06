@@ -8,6 +8,9 @@ import { salirEnVivo, terminarVivo } from "@/app/mi-puesto/vivo/acciones";
 import { entrarConGoogle } from "@/app/auth/acciones";
 import { EnVivo } from "@/components/marca/en-vivo";
 import { ChatEstudio } from "@/components/chat/chat-estudio";
+import { CodigosEstudio } from "@/components/codigos/codigos-estudio";
+import type { ProductoResumen } from "@/components/codigos/panel-codigo";
+import type { Codigo } from "@/lib/codigos/tipos";
 import { BotonAvisarWhatsapp } from "@/components/vivos/boton-avisar-whatsapp";
 import type { ConfigChat, MensajeChat } from "@/lib/chat/tipos";
 import { createClient } from "@/lib/supabase/client";
@@ -25,6 +28,7 @@ type Props = {
   config: ConfigVivo;
   vivoAbierto: Vivo | null;
   chat: { config: ConfigChat; mensajes: MensajeChat[]; userId: string };
+  codigos: { iniciales: Codigo[]; productos: ProductoResumen[] };
 };
 
 /** Cómo terminó la transmisión en este celular. */
@@ -65,7 +69,7 @@ export function EstudioVivo(props: Props) {
 }
 
 function Estudio({
-  tienda, urlTransmitir, config, vivoAbierto, chat, salirSolo, alSalirSolo, alSalirDeNuevo,
+  tienda, urlTransmitir, config, vivoAbierto, chat, codigos, salirSolo, alSalirSolo, alSalirDeNuevo,
 }: Props & { salirSolo: boolean; alSalirSolo(): void; alSalirDeNuevo(): void }) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const transmisorRef = useRef<Transmisor | null>(null);
@@ -358,7 +362,7 @@ function Estudio({
       )}
 
       {silenciada && fase !== "fin" && (
-        <p className="absolute top-[calc(max(env(safe-area-inset-top),0.75rem)+3.25rem)] left-1/2 -translate-x-1/2 rounded-full bg-white px-4 py-1.5 text-sm font-extrabold text-primary shadow-lg">
+        <p className="absolute top-[calc(max(env(safe-area-inset-top),0.75rem)+3.25rem)] left-3 rounded-full bg-white px-4 py-1.5 text-sm font-extrabold text-primary shadow-lg">
           🔇 Silenciada
         </p>
       )}
@@ -429,6 +433,10 @@ function Estudio({
           userId={chat.userId}
           claseBase="bottom-[calc(max(env(safe-area-inset-bottom),1rem)+3.75rem)]"
         />
+      )}
+
+      {enVivo && vivo && (
+        <CodigosEstudio vivoId={vivo.id} storeId={tienda.id} videoRef={videoRef} inicial={codigos.iniciales} productos={codigos.productos} />
       )}
 
       {enVivo && (

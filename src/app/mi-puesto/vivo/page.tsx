@@ -3,6 +3,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { connection } from "next/server";
 import { Suspense } from "react";
+import type { ProductoResumen } from "@/components/codigos/panel-codigo";
 import { EstadoVacio } from "@/components/estado-vacio";
 import { buttonVariants } from "@/components/ui/button";
 import { EstudioVivo } from "@/components/vivos/estudio-vivo";
@@ -11,7 +12,8 @@ import { obtenerConfigChat } from "@/lib/chat/config";
 import { mensajesIniciales } from "@/lib/chat/datos";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
-import { obtenerMiTienda } from "@/lib/tiendas/datos";
+import { CAMPOS_CODIGO, type Codigo } from "@/lib/codigos/tipos";
+import { listarProductos, obtenerMiTienda } from "@/lib/tiendas/datos";
 import { ErrorCloudflare, type UrlsTransmision } from "@/lib/vivos/cloudflare";
 import { credencialesCloudflare } from "@/lib/vivos/config";
 import { obtenerConfigVivo, vivoAbiertoDe } from "@/lib/vivos/datos";
@@ -63,6 +65,20 @@ async function ContenidoVivo() {
     vivoAbiertoDe(supabase, tienda.id),
     obtenerConfigChat(),
   ]);
+  const productos: ProductoResumen[] = (await listarProductos(supabase, tienda.id))
+    .filter((p) => p.visible)
+    .map((p) => ({
+      id: p.id,
+      nombre: p.name,
+      precio: p.price_cents,
+      cantidad: p.quantity,
+      foto: [...p.fotos].sort((a, b) => a.position - b.position)[0]?.path ?? null,
+    }));
+  let codigosIniciales: Codigo[] = [];
+  if (vivoAbierto) {
+    const { data } = await supabase.from("live_codes").select(CAMPOS_CODIGO).eq("live_session_id", vivoAbierto.id).order("created_at");
+    codigosIniciales = (data as Codigo[] | null) ?? [];
+  }
   const mensajes = vivoAbierto ? await mensajesIniciales(supabase, vivoAbierto.id, configChat.mensajes_al_entrar) : [];
   return (
     <EstudioVivo
@@ -71,6 +87,7 @@ async function ContenidoVivo() {
       config={config}
       vivoAbierto={vivoAbierto}
       chat={{ config: configChat, mensajes, userId }}
+      codigos={{ iniciales: codigosIniciales, productos }}
     />
   );
 }

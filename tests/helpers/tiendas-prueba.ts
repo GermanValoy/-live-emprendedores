@@ -102,7 +102,7 @@ export async function publicarPrueba(
 
 export async function borrarFotosDeTienda(storeId: string): Promise<void> {
   const bucket = clienteAdmin().storage.from("tienda-fotos");
-  for (const carpeta of ["perfil", "portada", "productos"]) {
+  for (const carpeta of ["perfil", "portada", "productos", "codigos"]) {
     const { data } = await bucket.list(`${storeId}/${carpeta}`, { limit: 1000 });
     const rutas = (data ?? []).map((f) => `${storeId}/${carpeta}/${f.name}`);
     if (rutas.length) await bucket.remove(rutas);

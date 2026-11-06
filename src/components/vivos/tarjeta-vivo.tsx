@@ -3,8 +3,11 @@ import { Foto } from "@/components/fotos/foto";
 import { EnVivo } from "@/components/marca/en-vivo";
 import type { VivoEnPortada } from "@/lib/vivos/datos";
 
-/** Tarjeta vertical de un vivo abierto. WebRTC no da miniaturas: se usa la portada (o la foto) del puesto. */
-export function TarjetaVivo({ item }: { item: VivoEnPortada }) {
+/**
+ * Tarjeta vertical de un vivo abierto. WebRTC no da miniaturas: se usa la portada (o la foto) del puesto.
+ * `volviendo`: el vivo sigue abierto pero la feriante salió o se le cortó la conexión (no se muestra "EN VIVO").
+ */
+export function TarjetaVivo({ item, volviendo = false }: { item: VivoEnPortada; volviendo?: boolean }) {
   const { vivo, puesto } = item;
   const imagen = puesto.cover_path ?? puesto.avatar_path;
   return (
@@ -12,10 +15,16 @@ export function TarjetaVivo({ item }: { item: VivoEnPortada }) {
       href={`/@${puesto.handle}/vivo`}
       className="relative block aspect-[9/16] w-40 shrink-0 snap-start overflow-hidden rounded-2xl bg-gradient-to-br from-accent to-primary text-white"
     >
-      {imagen && <Foto path={imagen} tamano="grande" alt="" className="absolute inset-0 size-full object-cover" />}
+      {imagen && (
+        <Foto path={imagen} tamano="grande" alt="" className={`absolute inset-0 size-full object-cover ${volviendo ? "opacity-60 grayscale-[40%]" : ""}`} />
+      )}
       <span aria-hidden="true" className="absolute inset-0 bg-gradient-to-t from-black/75 via-transparent to-black/30" />
       <span className="absolute inset-x-2 top-2 flex items-center justify-between gap-1">
-        <EnVivo />
+        {volviendo ? (
+          <span className="rounded-full bg-black/70 px-2 py-1 text-[11px] font-bold leading-tight">Vuelve en un momento</span>
+        ) : (
+          <EnVivo />
+        )}
         <span className="rounded-full bg-black/60 px-2 py-1 text-xs font-bold tabular-nums">
           <span aria-hidden="true">👁 {vivo.viewers}</span>
           <span className="sr-only">{vivo.viewers} mirando</span>

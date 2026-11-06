@@ -8,7 +8,8 @@ import { VivosAhora } from "@/components/vivos/vivos-ahora";
 import { obtenerUsuarioId } from "@/lib/auth/sesion";
 import { createClient } from "@/lib/supabase/server";
 import { idsSeguidos, listarPuestos } from "@/lib/tiendas/datos";
-import { listarVivosAbiertos } from "@/lib/vivos/datos";
+import { listarVivosAbiertos, obtenerConfigVivo } from "@/lib/vivos/datos";
+import { puestosTransmitiendo } from "@/lib/vivos/portada";
 
 type Props = { searchParams: Promise<{ error?: string | string[] }> };
 
@@ -26,12 +27,14 @@ async function Puestos() {
   await connection();
   const supabase = await createClient();
   const userId = await obtenerUsuarioId(supabase);
-  const [puestos, vivos, seguidos] = await Promise.all([
+  const [puestos, vivos, seguidos, configVivo] = await Promise.all([
     listarPuestos(supabase),
     listarVivosAbiertos(supabase),
     userId ? idsSeguidos(supabase, userId) : Promise.resolve(new Set<string>()),
+    obtenerConfigVivo(supabase),
   ]);
-  const enVivo = new Set(vivos.map((v) => v.puesto.id));
+  // En la lista de puestos, "EN VIVO" solo si está transmitiendo (no si la feriante salió o se le cortó la señal).
+  const enVivo = puestosTransmitiendo(vivos, configVivo);
   return (
     <>
       {!userId && (
@@ -39,14 +42,14 @@ async function Puestos() {
           <Button type="submit" size="lg" className="w-full">Entrar con Google</Button>
         </form>
       )}
-      <VivosAhora iniciales={vivos} />
+      <VivosAhora iniciales={vivos} config={configVivo} />
       <h2 className="text-lg font-bold">Puestos</h2>
       {puestos.length === 0 ? (
         <EstadoVacio texto="Pronto vas a ver acá los puestos de Tu Feria Live." />
       ) : (
         <div className="flex flex-col gap-3">
           {puestos.map((p) => (
-            <TarjetaPuesto key={p.id} puesto={p} siguiendo={seguidos.has(p.id)} conSesion={Boolean(userId)} enVivo={enVivo.has(p.id)} />
+            <TarjetaPuesto key={p.id} puesto={p} siguiendo={seguidos.has(p.id)} conSesion={Boolean(userId)} enVivo={enVivo.has(p.id)} esMio={p.owner_id === userId} />
           ))}
         </div>
       )}

@@ -47,7 +47,9 @@ async function Contenido({ params }: { params: Promise<{ handle: string }> }) {
             {tienda.name.charAt(0)}
           </div>
         )}
-        <BotonSeguir storeId={tienda.id} handle={tienda.handle} siguiendo={seguidos.has(tienda.id)} conSesion={Boolean(userId)} />
+        {tienda.owner_id !== userId && (
+          <BotonSeguir storeId={tienda.id} handle={tienda.handle} siguiendo={seguidos.has(tienda.id)} conSesion={Boolean(userId)} />
+        )}
       </div>
       <div className="flex flex-col gap-1">
         <h1 className="text-2xl font-extrabold">{tienda.name}</h1>

@@ -51,7 +51,7 @@ export type Producto = {
   fotos: FotoProducto[];
 };
 
-export type PuestoResumen = Pick<Tienda, "id" | "handle" | "name" | "category" | "zone" | "avatar_path"> & {
+export type PuestoResumen = Pick<Tienda, "id" | "owner_id" | "handle" | "name" | "category" | "zone" | "avatar_path"> & {
   productos: { id: string; price_cents: number; foto: string | null }[];
 };
 

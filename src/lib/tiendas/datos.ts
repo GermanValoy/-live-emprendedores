@@ -56,7 +56,7 @@ export async function contarSeguidores(supabase: SupabaseClient, storeId: string
 }
 
 const CAMPOS_PUESTO =
-  "id, handle, name, category, zone, avatar_path, created_at, products(id, price_cents, visible, created_at, product_photos(path, position))";
+  "id, owner_id, handle, name, category, zone, avatar_path, created_at, products(id, price_cents, visible, created_at, product_photos(path, position))";
 
 type FilaPuesto = Omit<PuestoResumen, "productos"> & {
   products: { id: string; price_cents: number; visible: boolean; product_photos: { path: string; position: number }[] }[];
@@ -64,6 +64,7 @@ type FilaPuesto = Omit<PuestoResumen, "productos"> & {
 
 const aPuesto = ({ products, ...tienda }: FilaPuesto): PuestoResumen => ({
   id: tienda.id,
+  owner_id: tienda.owner_id,
   handle: tienda.handle,
   name: tienda.name,
   category: tienda.category,

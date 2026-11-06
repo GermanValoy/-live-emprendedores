@@ -113,6 +113,13 @@
       "when": 1793891049296,
       "tag": "0015_chat_variantes_palabras",
       "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1793930249035,
+      "tag": "0016_seguridad_no_seguirse",
+      "breakpoints": true
     }
   ]
 }

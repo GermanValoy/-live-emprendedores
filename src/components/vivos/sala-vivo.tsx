@@ -20,6 +20,8 @@ type Props = {
   vivoInicial: Vivo | null;
   config: ConfigVivo;
   siguiendo: boolean;
+  /** La sala es de quien mira: no se ofrece seguirla. */
+  esMia: boolean;
   conSesion: boolean;
   /** El chat: valores, últimos mensajes, mi silencio y quién soy (null: visitante). */
   chat: { config: ConfigChat; mensajes: MensajeChat[]; silencio: SilencioChat; userId: string | null };
@@ -34,7 +36,7 @@ export function SalaVivo(props: Props) {
   return <Sala key={visita} {...props} />;
 }
 
-function Sala({ tienda, productos, vivoInicial, config, siguiendo, conSesion, chat }: Props) {
+function Sala({ tienda, productos, vivoInicial, config, siguiendo, esMia, conSesion, chat }: Props) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const { vivo, estado, mirando, reproduccion, sinSonido, activarSonido, canalListo } = useSalaVivo(tienda.id, vivoInicial, config, videoRef);
   const abierto = estado === "en-vivo" || estado === "vuelve-pronto" || estado === "reconectando-feriante";
@@ -98,7 +100,7 @@ function Sala({ tienda, productos, vivoInicial, config, siguiendo, conSesion, ch
         </div>
       )}
 
-      <Cabecera tienda={tienda} siguiendo={siguiendo} conSesion={conSesion} linkTienda={linkTienda}>
+      <Cabecera tienda={tienda} siguiendo={siguiendo} esMia={esMia} conSesion={conSesion} linkTienda={linkTienda}>
         {abierto && (
           <div className="flex items-center gap-2">
             <EnVivo />
@@ -147,8 +149,8 @@ function Sala({ tienda, productos, vivoInicial, config, siguiendo, conSesion, ch
 }
 
 function Cabecera({
-  tienda, siguiendo, conSesion, linkTienda, children,
-}: Pick<Props, "tienda" | "siguiendo" | "conSesion"> & { linkTienda: string; children: ReactNode }) {
+  tienda, siguiendo, esMia, conSesion, linkTienda, children,
+}: Pick<Props, "tienda" | "siguiendo" | "esMia" | "conSesion"> & { linkTienda: string; children: ReactNode }) {
   return (
     <header className="absolute inset-x-0 top-0 z-10 flex flex-col gap-2 bg-black/45 px-3 pt-[max(env(safe-area-inset-top),0.5rem)] pb-2 backdrop-blur">
       <div className="flex items-center gap-2">
@@ -160,7 +162,9 @@ function Cabecera({
           </span>
         )}
         <p className="min-w-0 flex-1 truncate font-bold">{tienda.name}</p>
-        <BotonSeguir storeId={tienda.id} handle={tienda.handle} siguiendo={siguiendo} conSesion={conSesion} volverA={`${linkTienda}/vivo`} />
+        {!esMia && (
+          <BotonSeguir storeId={tienda.id} handle={tienda.handle} siguiendo={siguiendo} conSesion={conSesion} volverA={`${linkTienda}/vivo`} />
+        )}
         <Link
           href={linkTienda}
           aria-label="Cerrar la sala"

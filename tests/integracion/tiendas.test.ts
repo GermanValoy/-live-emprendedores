@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { borrarUsuarioPrueba, clienteAnonimo, crearUsuarioPrueba, type UsuarioPrueba } from "../helpers/usuario-prueba";
+import { borrarUsuarioPrueba, clienteAdmin, clienteAnonimo, crearUsuarioPrueba, type UsuarioPrueba } from "../helpers/usuario-prueba";
 import {
   borrarFotosDeTienda, crearInvitacionPrueba, crearTiendaPrueba, handleAleatorio, hacerAdmin,
 } from "../helpers/tiendas-prueba";
@@ -167,6 +167,13 @@ describe("tiendas, invitaciones y seguridad", () => {
       expect(conteo).toBe(1);
       const ajeno = await compradora.cliente.from("follows").insert({ user_id: mica.id, store_id: tiendaMica.id });
       expect(ajeno.error).not.toBeNull();
+    });
+
+    it("la dueña no puede seguir su propio puesto", async () => {
+      const propio = await mica.cliente.from("follows").insert({ user_id: mica.id, store_id: tiendaMica.id });
+      expect(propio.error).not.toBeNull();
+      const { data } = await clienteAdmin().from("follows").select("user_id").eq("store_id", tiendaMica.id).eq("user_id", mica.id);
+      expect(data).toEqual([]);
     });
   });
 

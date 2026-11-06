@@ -135,7 +135,7 @@ Programar los pagos como un **módulo intercambiable** (`lib/payments/` con una 
 
 ## 10. Plan por fases
 
-**Estado (2026-11-05)**: Fase 0 publicada · Fase 1: Parte 0 (pantallas), Parte 1 (tiendas y productos), Parte 2 (sala en vivo) y **Parte 3 (chat)** publicadas en `tuferialive.vercel.app` (la Parte 2, probada en celulares reales Android e iPhone el 2026-10-29; la Parte 3, el 2026-11-05). Antes de la Parte 4: arreglar que el Inicio muestre "EN VIVO" mientras el vivo espera a que vuelva la conexión, y que la dueña pueda seguir su propio puesto. Lo siguiente: Parte 4 (código en vivo y pagos).
+**Estado (2026-11-05)**: Fase 0 publicada · Fase 1: Parte 0 (pantallas), Parte 1 (tiendas y productos), Parte 2 (sala en vivo) y **Parte 3 (chat)** publicadas en `tuferialive.vercel.app` (la Parte 2, probada en celulares reales Android e iPhone el 2026-10-29; la Parte 3, el 2026-11-05). Arreglados después: el Inicio ya no muestra "EN VIVO" mientras el vivo espera que vuelva la feriante, y la dueña no puede seguir su propio puesto. Lo siguiente: Parte 4 (código en vivo y pagos).
 
 **Fase 0 – Bases**: proyecto Next.js + Supabase + Drizzle, sistema de diseño (colores, tipografía, componentes base), login, estructura de carpetas, CI con tests, deploy en Vercel.
 
@@ -149,7 +149,6 @@ Programar los pagos como un **módulo intercambiable** (`lib/payments/` con una 
 
 ### Pendientes conocidos (detalles menores anotados en las revisiones)
 
-- La dueña ve el botón "Seguir" en su propia tienda (ocultarlo).
 - En escritorio todo se ve en una columna angosta (pensado primero para celular).
 - Editar un producto no es "todo o nada": si falla a mitad de camino puede perder sus fotos.
 - Fotos sueltas en Storage cuando se abandona un formulario: hace falta una limpieza periódica.

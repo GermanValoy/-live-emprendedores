@@ -23,6 +23,7 @@ export async function POST(request: Request) {
     body: JSON.stringify({
       audio: Buffer.from(audio).toString("base64"),
       language: "es",
+      vad_filter: true, // sin voz no inventa texto (con silencio solo decía "Gracias.")
       initial_prompt: "Precio y código de una prenda en un vivo de ventas. Por ejemplo: ocho mil pesos, código rojo.",
     }),
   });

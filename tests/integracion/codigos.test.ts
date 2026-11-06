@@ -464,6 +464,7 @@ describe("códigos en vivo", () => {
 
     beforeEach(async () => {
       await borrarChatDeTienda(tienda.id);
+      await clienteAdmin().from("chat_silenced_attempts").delete().eq("live_session_id", vivo);
     });
     afterAll(async () => {
       await borrarChatDeTienda(tienda.id);
@@ -517,6 +518,29 @@ describe("códigos en vivo", () => {
       expect(data).toEqual([]);
       const { data: r } = await clienteAdmin().from("claims").select("message_id").eq("code_id", rojo.id).single();
       expect(r?.message_id).toBeNull();
+    });
+
+    it("silenciada: pasado el límite de ráfaga ya no reclama", async () => {
+      const rojo = await lanzarPrueba(mica.cliente, vivo, "rojo");
+      const silencio = await clienteAdmin()
+        .from("chat_silences")
+        .insert({ store_id: tienda.id, user_id: caro.id, kind: "sala", source: "feriante", created_by: mica.id });
+      expect(silencio.error).toBeNull();
+      const { data: cfg } = await clienteAdmin().from("chat_config").select("rafaga_mensajes").eq("id", 1).single();
+      const limite = cfg?.rafaga_mensajes as number;
+      // Los primeros intentos (hasta el límite) son silenciadas; no reclaman todavía porque el texto no es el código.
+      for (let i = 0; i < limite; i++) expect((await publicarPrueba(caro.id, vivo, `hola ${i}`)).estado).toBe("silenciada");
+      // El siguiente, aunque sea el código, recibe ráfaga: la función no publica ni reclama.
+      const { publicado, reclamo } = await (async () => {
+        const publicado = await publicarPrueba(caro.id, vivo, "ROJO");
+        const estadoChat = publicado.estado === "rafaga" ? "rafaga" : "silenciada";
+        return { publicado, reclamo: await procesarReclamo(clienteAdmin(), {
+          userId: caro.id, vivoId: vivo, nombre: "Prueba P.", texto: "ROJO", mensajeId: null, estadoChat,
+        }) };
+      })();
+      expect(publicado).toEqual({ estado: "rafaga" });
+      expect(reclamo).toBeNull();
+      expect(await reclamosDe(rojo.id)).toEqual([]);
     });
 
     it("repetido", async () => {

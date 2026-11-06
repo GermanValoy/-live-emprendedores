@@ -127,12 +127,7 @@ export function useChat(
       if (!vivoId) return;
       const r = await alServidor(() => enviarMensaje(vivoId, texto));
       // Si lo que escribió era (o casi era) el código, el servidor cuenta qué pasó.
-      if ("reclamo" in r && r.reclamo) {
-        setUltimoReclamo(r.reclamo);
-        if (r.reclamo.estado === "pista") {
-          mostrarAviso(r.reclamo.tipo === "nombra" ? `¿Lo querés? Escribí ${r.reclamo.codigo}` : `¿Quisiste escribir ${r.reclamo.codigo}? Escribilo de nuevo`);
-        }
-      }
+      if ("reclamo" in r && r.reclamo) setUltimoReclamo(r.reclamo);
       const fallo = () => setMensajes((a) => a.map((i) => (i.id === idLocal ? { ...i, estado: "error" as const } : i)));
       if (r.ok) {
         // Se reemplaza lo pendiente por el mensaje del servidor (sin duplicarlo si ya llegó por el canal).

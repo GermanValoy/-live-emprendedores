@@ -201,6 +201,18 @@ export const chatMessages = pgTable(
   ],
 );
 
+/** Intentos de escribir de personas silenciadas (para que no puedan insistir sin límite). Solo la función de la base la usa. */
+export const chatSilencedAttempts = pgTable(
+  "chat_silenced_attempts",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+    liveSessionId: uuid("live_session_id").notNull().references(() => liveSessions.id, { onDelete: "cascade" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("chat_silenced_attempts_usuario_creado_idx").on(t.userId, t.createdAt)],
+);
+
 export const chatSilences = pgTable("chat_silences", {
   id: uuid("id").primaryKey().defaultRandom(),
   storeId: uuid("store_id").references(() => stores.id, { onDelete: "cascade" }),

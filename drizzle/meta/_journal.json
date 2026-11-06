@@ -162,6 +162,20 @@
       "when": 1793989904557,
       "tag": "0022_vencer_pedidos_aviso",
       "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1793991393307,
+      "tag": "0023_dear_monster_badoon",
+      "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1793991402435,
+      "tag": "0024_reclamo_silenciada_rafaga",
+      "breakpoints": true
     }
   ]
 }

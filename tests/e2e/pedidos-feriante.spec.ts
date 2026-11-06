@@ -2,11 +2,16 @@ import { expect, test } from "@playwright/test";
 import { borrarChatDeTienda, borrarCodigosDeTienda, borrarVivosDeTienda, crearTiendaPrueba, crearTransmisionPrueba, lanzarPrueba, reclamarPrueba } from "../helpers/tiendas-prueba";
 import { borrarUsuarioPrueba, clienteAdmin, crearUsuarioPrueba, type UsuarioPrueba } from "../helpers/usuario-prueba";
 import { cookiesDeSesion } from "./sesion";
+import { responderVozVacia } from "./voz";
 
 // Cámara falsa de Playwright; la transmisión apunta a cloudflare.invalid (no conecta, no hace falta).
 
 const usuarios: UsuarioPrueba[] = [];
 let tiendaId = "";
+
+test.beforeEach(async ({ context }) => {
+  await responderVozVacia(context);
+});
 
 test.afterAll(async () => {
   if (tiendaId) {

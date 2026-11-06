@@ -2,14 +2,19 @@ import { expect, test } from "@playwright/test";
 import { borrarCodigosDeTienda, borrarFotosDeTienda, borrarVivosDeTienda, crearTiendaPrueba, crearTransmisionPrueba, reclamarPrueba } from "../helpers/tiendas-prueba";
 import { borrarUsuarioPrueba, clienteAdmin, crearUsuarioPrueba, type UsuarioPrueba } from "../helpers/usuario-prueba";
 import { cookiesDeSesion } from "./sesion";
+import { responderVozVacia } from "./voz";
 
 // Cámara falsa de Playwright; la transmisión apunta a cloudflare.invalid (no conecta, no hace falta).
 
 const usuarios: UsuarioPrueba[] = [];
-let tiendaId = "";
+const tiendas: string[] = [];
+
+test.beforeEach(async ({ context }) => {
+  await responderVozVacia(context);
+});
 
 test.afterAll(async () => {
-  if (tiendaId) {
+  for (const tiendaId of tiendas) {
     await borrarCodigosDeTienda(tiendaId);
     await borrarVivosDeTienda(tiendaId);
     await borrarFotosDeTienda(tiendaId);
@@ -22,7 +27,7 @@ test("crear un código a mano, verlo vender y anularlo", async ({ page, context 
   const caro = await crearUsuarioPrueba({ nombre: "Caro Compradora" });
   usuarios.push(mica, caro);
   const tienda = await crearTiendaPrueba(mica);
-  tiendaId = tienda.id;
+  tiendas.push(tienda.id);
   await crearTransmisionPrueba(tienda.id);
   await context.addCookies(await cookiesDeSesion(mica.sesion));
 
@@ -59,4 +64,25 @@ test("crear un código a mano, verlo vender y anularlo", async ({ page, context 
   await page.getByLabel("Código", { exact: true }).fill("rojo");
   await page.getByRole("button", { name: /^Lanzar código/ }).click();
   await expect(page.getByText("Ya usaste ROJO en este vivo.")).toBeVisible({ timeout: 15_000 });
+});
+
+test("la voz arranca prendida al salir en vivo y se puede apagar y prender", async ({ page, context }) => {
+  const sofi = await crearUsuarioPrueba({ nombre: "Sofi Voz" });
+  usuarios.push(sofi);
+  const tienda = await crearTiendaPrueba(sofi);
+  tiendas.push(tienda.id);
+  await crearTransmisionPrueba(tienda.id);
+  await context.addCookies(await cookiesDeSesion(sofi.sesion));
+
+  await page.goto("/mi-puesto/vivo");
+  await expect(page.getByText("EN VIVO", { exact: true })).toBeVisible({ timeout: 30_000 });
+
+  const voz = page.getByRole("switch", { name: "🎤 Escuchando códigos" });
+  await expect(voz).toBeVisible();
+  await expect(voz).toHaveAttribute("aria-checked", "true");
+  await voz.click();
+  await expect(voz).toHaveAttribute("aria-checked", "false");
+  await voz.click();
+  await expect(voz).toHaveAttribute("aria-checked", "true");
+  await expect(page.getByRole("button", { name: "+ Nuevo código" })).toBeVisible();
 });

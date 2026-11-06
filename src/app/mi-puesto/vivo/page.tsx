@@ -12,6 +12,7 @@ import { obtenerConfigChat } from "@/lib/chat/config";
 import { mensajesIniciales } from "@/lib/chat/datos";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
+import { obtenerConfigCodigo } from "@/lib/codigos/config";
 import { CAMPOS_CODIGO, type Codigo } from "@/lib/codigos/tipos";
 import { listarProductos, obtenerMiTienda } from "@/lib/tiendas/datos";
 import { ErrorCloudflare, type UrlsTransmision } from "@/lib/vivos/cloudflare";
@@ -60,11 +61,21 @@ async function ContenidoVivo() {
       </div>
     );
   }
-  const [config, vivoAbierto, configChat] = await Promise.all([
+  const [config, vivoAbierto, configChat, configCodigo] = await Promise.all([
     obtenerConfigVivo(supabase),
     vivoAbiertoDe(supabase, tienda.id),
     obtenerConfigChat(),
+    obtenerConfigCodigo(),
   ]);
+  // Solo los números del detector de voz: el resto de `code_config` no le hace falta al estudio.
+  const configVoz = {
+    umbralMinimo: Number(configCodigo.voz_umbral_minimo),
+    previoMs: configCodigo.voz_previo_ms,
+    silencioFinMs: configCodigo.voz_silencio_fin_ms,
+    maximoMs: configCodigo.voz_maximo_ms,
+    solapeMs: configCodigo.voz_solape_ms,
+    minimoVozMs: configCodigo.voz_minimo_voz_ms,
+  };
   const productos: ProductoResumen[] = (await listarProductos(supabase, tienda.id))
     .filter((p) => p.visible)
     .map((p) => ({
@@ -87,7 +98,7 @@ async function ContenidoVivo() {
       config={config}
       vivoAbierto={vivoAbierto}
       chat={{ config: configChat, mensajes, userId }}
-      codigos={{ iniciales: codigosIniciales, productos }}
+      codigos={{ iniciales: codigosIniciales, productos, voz: configVoz }}
     />
   );
 }

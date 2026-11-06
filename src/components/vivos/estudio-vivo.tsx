@@ -12,6 +12,7 @@ import { CodigosEstudio } from "@/components/codigos/codigos-estudio";
 import { PedidosVivo } from "@/components/codigos/pedidos-vivo";
 import type { ProductoResumen } from "@/components/codigos/panel-codigo";
 import type { Codigo } from "@/lib/codigos/tipos";
+import type { ConfigDetector } from "@/lib/voz/detector";
 import { BotonAvisarWhatsapp } from "@/components/vivos/boton-avisar-whatsapp";
 import type { ConfigChat, MensajeChat } from "@/lib/chat/tipos";
 import { createClient } from "@/lib/supabase/client";
@@ -29,7 +30,7 @@ type Props = {
   config: ConfigVivo;
   vivoAbierto: Vivo | null;
   chat: { config: ConfigChat; mensajes: MensajeChat[]; userId: string };
-  codigos: { iniciales: Codigo[]; productos: ProductoResumen[] };
+  codigos: { iniciales: Codigo[]; productos: ProductoResumen[]; voz: ConfigDetector };
 };
 
 /** Cómo terminó la transmisión en este celular. */
@@ -74,6 +75,8 @@ function Estudio({
 }: Props & { salirSolo: boolean; alSalirSolo(): void; alSalirDeNuevo(): void }) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const transmisorRef = useRef<Transmisor | null>(null);
+  // El mismo transmisor, para la voz (que se suscribe a su micrófono).
+  const [transmisor, setTransmisor] = useState<Transmisor | null>(null);
   const senalRef = useRef<{ avisarAhora(): void; detener(): void } | null>(null);
   const limpiezasRef = useRef<(() => void)[]>([]);
   const dispositivoRef = useRef<string | null>(null);
@@ -142,6 +145,7 @@ function Estudio({
         if (cancelado) { t.detener(); return; }
         if (silenciadaRef.current) t.silenciar(true);
         transmisorRef.current = t;
+        setTransmisor(t);
         // Sale en vivo apenas prende la cámara. Sin cámara queda el aviso del permiso; si falla, el botón para reintentar.
         if (ultimoEstado === "vista-previa") alPrenderCamara();
       });
@@ -437,7 +441,15 @@ function Estudio({
       )}
 
       {enVivo && vivo && (
-        <CodigosEstudio vivoId={vivo.id} storeId={tienda.id} videoRef={videoRef} inicial={codigos.iniciales} productos={codigos.productos} />
+        <CodigosEstudio
+          vivoId={vivo.id}
+          storeId={tienda.id}
+          videoRef={videoRef}
+          inicial={codigos.iniciales}
+          productos={codigos.productos}
+          transmisor={transmisor}
+          configVoz={codigos.voz}
+        />
       )}
 
       {enVivo && (

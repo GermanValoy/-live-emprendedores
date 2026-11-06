@@ -2,6 +2,7 @@ import { devices, expect, test, type Browser, type BrowserContext, type Page } f
 import { borrarUsuarioPrueba, clienteAdmin, crearUsuarioPrueba, type UsuarioPrueba } from "../helpers/usuario-prueba";
 import { borrarChatDeTienda, borrarVivosDeTienda, crearTiendaPrueba, crearTransmisionPrueba, publicarPrueba } from "../helpers/tiendas-prueba";
 import { cookiesDeSesion } from "./sesion";
+import { responderVozVacia } from "./voz";
 
 // La transmisión apunta a cloudflare.invalid: el video nunca conecta; acá solo importa el chat del estudio.
 
@@ -46,6 +47,7 @@ async function abrirEstudio(browser: Browser, mica: UsuarioPrueba): Promise<Page
     permissions: ["camera", "microphone"],
   });
   contextos.push(contexto);
+  await responderVozVacia(contexto);
   await contexto.addCookies(await cookiesDeSesion(mica.sesion));
   const page = await contexto.newPage();
   await page.goto("/mi-puesto/vivo");

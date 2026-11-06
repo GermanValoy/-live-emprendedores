@@ -53,6 +53,30 @@ type Opciones = {
 
 type Bloqueo = "limite" | "sin-servicio" | "sin-audio";
 
+type Grafo = { ctx: AudioContext; fuente: MediaStreamAudioSourceNode; proceso: ScriptProcessorNode };
+
+/**
+ * Arma el audio para escuchar una copia de la pista, en un AudioContext propio.
+ * Si algo falla (por ejemplo, Firefox con otra frecuencia de muestreo), cierra el contexto y tira el error.
+ */
+function armarGrafo(pista: MediaStreamTrack): Grafo {
+  const ctx = new AudioContext();
+  try {
+    // Una copia de la pista en un MediaStream propio: se lee, no se le saca a la transmisión.
+    const fuente = ctx.createMediaStreamSource(new MediaStream([pista]));
+    const proceso = ctx.createScriptProcessor(4096, 1, 1);
+    const mudo = ctx.createGain();
+    mudo.gain.value = 0; // Tiene que llegar a la salida para que procese, pero sin que suene.
+    fuente.connect(proceso);
+    proceso.connect(mudo);
+    mudo.connect(ctx.destination);
+    return { ctx, fuente, proceso };
+  } catch (error) {
+    void ctx.close().catch(() => undefined);
+    throw error;
+  }
+}
+
 /**
  * Escucha una copia del micrófono de la transmisión y arma el cartel del código con cada frase.
  * Solo lee la pista con un AudioContext propio: la transmisión no se toca.
@@ -84,22 +108,16 @@ export function useVoz({ transmisor, video, vivoId, config, palabrasUsadas, acti
     if (!escuchar || !pista) return;
     let prendida = true;
     let errores = 0;
-    let ctx: AudioContext;
+    let grafo: Grafo;
     try {
-      ctx = new AudioContext();
+      grafo = armarGrafo(pista);
     } catch (e) {
-      console.error("Voz: no se pudo crear el AudioContext", e);
+      // Si el navegador no deja leer la pista, la voz se apaga sola: el vivo sigue igual.
+      console.error("Voz: no se pudo escuchar el micrófono", e);
       queueMicrotask(() => { if (prendida) setBloqueo("sin-audio"); });
       return () => { prendida = false; };
     }
-    // Una copia de la pista en un MediaStream propio: se lee, no se le saca a la transmisión.
-    const fuente = ctx.createMediaStreamSource(new MediaStream([pista]));
-    const proceso = ctx.createScriptProcessor(4096, 1, 1);
-    const mudo = ctx.createGain();
-    mudo.gain.value = 0; // Tiene que llegar a la salida para que procese, pero sin que suene.
-    fuente.connect(proceso);
-    proceso.connect(mudo);
-    mudo.connect(ctx.destination);
+    const { ctx, fuente, proceso } = grafo;
     const tasa = ctx.sampleRate;
 
     // El navegador puede arrancar el audio en pausa hasta que la feriante toque la pantalla.

@@ -86,3 +86,27 @@ test("la voz arranca prendida al salir en vivo y se puede apagar y prender", asy
   await expect(voz).toHaveAttribute("aria-checked", "true");
   await expect(page.getByRole("button", { name: "+ Nuevo código" })).toBeVisible();
 });
+
+test("si el navegador no deja escuchar el micrófono, la voz se apaga y el vivo sigue", async ({ page, context }) => {
+  const lu = await crearUsuarioPrueba({ nombre: "Lu Sin Voz" });
+  usuarios.push(lu);
+  const tienda = await crearTiendaPrueba(lu);
+  tiendas.push(tienda.id);
+  await crearTransmisionPrueba(tienda.id);
+  await context.addCookies(await cookiesDeSesion(lu.sesion));
+  // Como Firefox cuando la frecuencia de la pista no coincide con la del AudioContext.
+  await page.addInitScript(() => {
+    AudioContext.prototype.createMediaStreamSource = () => {
+      throw new DOMException("Frecuencia distinta", "NotSupportedError");
+    };
+  });
+
+  await page.goto("/mi-puesto/vivo");
+  await expect(page.getByText("EN VIVO", { exact: true })).toBeVisible({ timeout: 30_000 });
+  await expect(page.getByText("Este celular no deja escuchar la voz. Usá + Nuevo código.")).toBeVisible();
+  await expect(page.getByRole("switch", { name: "🎤 Escuchando códigos" })).toHaveAttribute("aria-checked", "false");
+
+  await page.getByRole("button", { name: "+ Nuevo código" }).click();
+  await expect(page.getByRole("button", { name: /^Lanzar código/ })).toBeVisible();
+  await expect(page.getByText("EN VIVO", { exact: true })).toBeVisible();
+});

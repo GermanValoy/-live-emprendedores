@@ -179,7 +179,7 @@ La forma es la de la Parte 0 (6.3, captura 04), con dos cambios: la entrega se e
 - Un aviso fijo arriba: "**Antes de confirmar, revisá en tu banco que la plata haya llegado.** Las capturas se pueden falsificar."
 - **Acciones por pedido**:
   - **Confirmar pago**: pasa a Pagado.
-  - **No me llegó el pago**: pasa a "En revisión". A la compradora le aparece "Mica no encuentra tu pago. Escribile por WhatsApp para aclararlo." El pedido no vence en este estado. Desde ahí, la feriante puede:
+  - **No me llegó el pago**: pasa a "En revisión". A la compradora le aparece "Mica no encuentra tu pago. Te va a escribir por WhatsApp para aclararlo." (la tienda no tiene WhatsApp propio; la feriante tiene el de la compradora) El pedido no vence en este estado. Desde ahí, la feriante puede:
     - **Confirmar pago**, si se aclaró;
     - **Ofrecer a otra**: el pedido queda anulado, se registra la falta y la unidad pasa a la siguiente de la lista, o vuelve a estar disponible (sección 7).
   - **Darle más tiempo**, si todavía no pagó (sección 7).
@@ -191,7 +191,7 @@ La forma es la de la Parte 0 (6.3, captura 04), con dos cambios: la entrega se e
 Forma de la Parte 0 (6.7). Muestra todos los pedidos de la compradora, el más nuevo arriba, cada uno con la foto, el puesto, el código, el monto y el **estado**:
 - **Por pagar**, con la cuenta regresiva y el botón "Ver datos para pagar", que reabre el panel;
 - **Esperando confirmación**;
-- **En revisión**, con el mensaje de la feriante y su WhatsApp para escribirle;
+- **En revisión**, con el aviso de que la feriante le va a escribir por WhatsApp;
 - **Pagado**, con los datos de la entrega;
 - **Vencido** o **Anulado**, en gris.
 

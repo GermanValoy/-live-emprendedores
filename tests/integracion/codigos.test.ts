@@ -1,8 +1,28 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { borrarUsuarioPrueba, clienteAdmin, clienteAnonimo, crearUsuarioPrueba, type UsuarioPrueba } from "../helpers/usuario-prueba";
 import {
-  borrarCodigosDeTienda, borrarVivosDeTienda, crearTiendaPrueba, crearTransmisionPrueba, lanzarPrueba,
+  borrarCodigosDeTienda, borrarVivosDeTienda, crearTiendaPrueba, crearTransmisionPrueba, lanzarPrueba, reclamarPrueba,
 } from "../helpers/tiendas-prueba";
+
+/** Cuentas sin sesión (solo hace falta su id) para las pruebas de muchas compradoras a la vez. */
+async function crearCompradoras(cuantas: number): Promise<string[]> {
+  const admin = clienteAdmin();
+  return Promise.all(
+    Array.from({ length: cuantas }, async () => {
+      const { data, error } = await admin.auth.admin.createUser({
+        email: `prueba-${crypto.randomUUID()}@tuferia.test`,
+        email_confirm: true,
+        user_metadata: { full_name: "Compradora Simultánea" },
+      });
+      if (error || !data.user) throw error ?? new Error("No se creó la compradora de prueba");
+      return data.user.id;
+    }),
+  );
+}
+
+/** Milisegundos entre una fecha guardada y "ahora + minutos". */
+const distanciaA = (fecha: string, minutos: number) =>
+  Math.abs(new Date(fecha).getTime() - (Date.now() + minutos * 60_000));
 
 describe("códigos en vivo", () => {
   let mica: UsuarioPrueba;
@@ -10,6 +30,7 @@ describe("códigos en vivo", () => {
   let luz: UsuarioPrueba;
   let tienda: { id: string; handle: string };
   let vivo: string;
+  let compradoras: string[] = [];
 
   const abrirVivo = async () => {
     const { data, error } = await mica.cliente.rpc("abrir_vivo", { p_store: tienda.id, p_device: crypto.randomUUID() });
@@ -77,7 +98,8 @@ describe("códigos en vivo", () => {
     if (privados.error) throw privados.error;
     await crearTransmisionPrueba(tienda.id);
     await abrirVivo();
-  });
+    compradoras = await crearCompradoras(20);
+  }, 60_000);
 
   beforeEach(async () => {
     await borrarCodigosDeTienda(tienda.id);
@@ -89,7 +111,8 @@ describe("códigos en vivo", () => {
       await borrarVivosDeTienda(tienda.id);
     }
     await Promise.all([mica, caro, luz].filter(Boolean).map((u) => borrarUsuarioPrueba(u.id)));
-  });
+    await Promise.all(compradoras.map((id) => borrarUsuarioPrueba(id)));
+  }, 60_000);
 
   it("la feriante lanza un código y cualquiera lo lee", async () => {
     const { data, error } = await lanzar(mica.cliente);
@@ -271,6 +294,150 @@ describe("códigos en vivo", () => {
       id: 1, plazo_minutos: 15, cartel_ganadora_segundos: 18, lista_espera_max: 5, aceptar_casi: false,
       voz_umbral_minimo: 0.012, voz_previo_ms: 600, voz_silencio_fin_ms: 800, voz_maximo_ms: 12000,
       voz_solape_ms: 2000, voz_minimo_voz_ms: 500, voz_segundos_por_dia: 10800,
+    });
+  });
+
+  describe("reclamar", () => {
+    it("la primera gana", async () => {
+      const rojo = await lanzarPrueba(mica.cliente, vivo, "rojo");
+      const ganadora = await reclamarPrueba(caro.id, rojo.id);
+      expect(ganadora).toMatchObject({ estado: "ganaste" });
+      expect(typeof ganadora.pedido).toBe("string");
+
+      const pedido = await caro.cliente.from("orders").select("*").eq("id", ganadora.pedido as string).single();
+      expect(pedido.error).toBeNull();
+      expect(pedido.data).toMatchObject({
+        status: "por_pagar", price_cents: 800000, total_cents: 800000, payment_alias: "mica.ropa",
+        payment_holder: "Micaela Díaz", buyer_id: caro.id, buyer_name: "Prueba P.", store_id: tienda.id,
+        live_session_id: vivo, code_id: rojo.id,
+      });
+      expect(distanciaA(pedido.data.deadline, 15)).toBeLessThan(120_000);
+
+      const segunda = await reclamarPrueba(luz.id, rojo.id, "Luz C.");
+      expect(segunda).toEqual({ estado: "lista", lugar: 1, ganadora: "Prueba P." });
+
+      const visitante = await clienteAnonimo().from("live_codes").select("sold, last_winner_name").eq("id", rojo.id).single();
+      expect(visitante.data).toEqual({ sold: 1, last_winner_name: "Prueba P." });
+
+      const reclamos = await clienteAdmin().from("claims").select("user_id, status, message_body").eq("code_id", rojo.id);
+      expect(reclamos.data).toHaveLength(2);
+      expect(reclamos.data).toEqual(expect.arrayContaining([
+        { user_id: caro.id, status: "ganadora", message_body: "ROJO" },
+        { user_id: luz.id, status: "espera", message_body: "ROJO" },
+      ]));
+    });
+
+    it("reclamos simultáneos", async () => {
+      const filtrar = (resultados: Record<string, unknown>[], estado: string) =>
+        resultados.filter((r) => r.estado === estado);
+
+      const rojo = await lanzarPrueba(mica.cliente, vivo, "rojo", { cantidad: 1 });
+      const resultados = await Promise.all(compradoras.map((id) => reclamarPrueba(id, rojo.id)));
+      expect(filtrar(resultados, "ganaste")).toHaveLength(1);
+      expect(filtrar(resultados, "lista").map((r) => r.lugar).sort()).toEqual([1, 2, 3, 4, 5]);
+      expect(filtrar(resultados, "agotado")).toHaveLength(14);
+      const pedidosRojo = await clienteAdmin().from("orders").select("id").eq("code_id", rojo.id);
+      expect(pedidosRojo.data).toHaveLength(1);
+      expect((await codigo(rojo.id)).sold).toBe(1);
+
+      const azul = await lanzarPrueba(mica.cliente, vivo, "azul", { cantidad: 3 });
+      const otros = await Promise.all(compradoras.map((id) => reclamarPrueba(id, azul.id)));
+      expect(filtrar(otros, "ganaste")).toHaveLength(3);
+      expect(filtrar(otros, "lista")).toHaveLength(5);
+      expect(filtrar(otros, "agotado")).toHaveLength(12);
+      const pedidosAzul = await clienteAdmin().from("orders").select("id").eq("code_id", azul.id);
+      expect(pedidosAzul.data).toHaveLength(3);
+      expect((await codigo(azul.id)).sold).toBe(3);
+    }, 60_000);
+
+    it("una persona, un reclamo", async () => {
+      const rojo = await lanzarPrueba(mica.cliente, vivo, "rojo", { cantidad: 2 });
+      expect(await reclamarPrueba(caro.id, rojo.id)).toMatchObject({ estado: "ganaste" });
+      expect(await reclamarPrueba(caro.id, rojo.id)).toEqual({ estado: "repetido" });
+      expect((await codigo(rojo.id)).sold).toBe(1);
+    });
+
+    it("la feriante no reclama lo suyo", async () => {
+      const rojo = await lanzarPrueba(mica.cliente, vivo, "rojo");
+      expect(await reclamarPrueba(mica.id, rojo.id)).toEqual({ estado: "propio" });
+      expect((await codigo(rojo.id)).sold).toBe(0);
+    });
+
+    it("código cerrado", async () => {
+      const rojo = await lanzarPrueba(mica.cliente, vivo, "rojo");
+      const { error } = await mica.cliente.rpc("cerrar_codigo", { p_codigo: rojo.id });
+      expect(error).toBeNull();
+      expect(await reclamarPrueba(caro.id, rojo.id)).toEqual({ estado: "sin_codigo" });
+      expect(await reclamarPrueba(caro.id, crypto.randomUUID())).toEqual({ estado: "sin_codigo" });
+      const reclamos = await clienteAdmin().from("claims").select("id").eq("code_id", rojo.id);
+      expect(reclamos.data).toEqual([]);
+    });
+
+    it("plazo propio", async () => {
+      const admin = clienteAdmin();
+      const cambio = await admin.from("stores").update({ payment_minutes: 30 }).eq("id", tienda.id);
+      if (cambio.error) throw cambio.error;
+      try {
+        const rojo = await lanzarPrueba(mica.cliente, vivo, "rojo");
+        const ganadora = await reclamarPrueba(caro.id, rojo.id);
+        const pedido = await admin.from("orders").select("deadline").eq("id", ganadora.pedido as string).single();
+        expect(distanciaA(pedido.data?.deadline, 30)).toBeLessThan(120_000);
+      } finally {
+        await admin.from("stores").update({ payment_minutes: null }).eq("id", tienda.id);
+      }
+    });
+
+    it("el navegador no reclama", async () => {
+      const rojo = await lanzarPrueba(mica.cliente, vivo, "rojo");
+      for (const cliente of [caro.cliente, clienteAnonimo()]) {
+        const reclamo = await cliente.rpc("reclamar_codigo", {
+          p_user: caro.id, p_codigo: rojo.id, p_nombre: "Caro C.", p_mensaje: null, p_texto: "ROJO",
+        });
+        expect(reclamo.error).not.toBeNull();
+        const siguiente = await cliente.rpc("pasar_a_siguiente", { p_codigo: rojo.id });
+        expect(siguiente.error).not.toBeNull();
+      }
+      expect((await codigo(rojo.id)).sold).toBe(0);
+    });
+
+    it("privacidad", async () => {
+      const rojo = await lanzarPrueba(mica.cliente, vivo, "rojo");
+      await reclamarPrueba(caro.id, rojo.id);
+      const reclamoCaro = (c: UsuarioPrueba["cliente"]) =>
+        c.from("claims").select("id").eq("code_id", rojo.id).eq("user_id", caro.id);
+      const pedidoCaro = (c: UsuarioPrueba["cliente"]) =>
+        c.from("orders").select("id").eq("code_id", rojo.id).eq("buyer_id", caro.id);
+      expect((await reclamoCaro(luz.cliente)).data ?? []).toHaveLength(0);
+      expect((await pedidoCaro(luz.cliente)).data ?? []).toHaveLength(0);
+      expect((await reclamoCaro(mica.cliente)).data).toHaveLength(1);
+      expect((await pedidoCaro(mica.cliente)).data).toHaveLength(1);
+    });
+
+    it("el reclamo usa la hora del mensaje", async () => {
+      const rojo = await lanzarPrueba(mica.cliente, vivo, "rojo");
+      const hora = new Date(Date.now() - 5_000).toISOString();
+      const admin = clienteAdmin();
+      const mensaje = await admin
+        .from("chat_messages")
+        .insert({
+          live_session_id: vivo, store_id: tienda.id, user_id: caro.id, author_name: "Caro C.", body: "rojo",
+          normalized: "rojo", created_at: hora,
+        })
+        .select("id")
+        .single();
+      if (mensaje.error) throw mensaje.error;
+      try {
+        const { data, error } = await admin.rpc("reclamar_codigo", {
+          p_user: caro.id, p_codigo: rojo.id, p_nombre: "Caro C.", p_mensaje: mensaje.data.id, p_texto: "rojo",
+        });
+        expect(error).toBeNull();
+        expect(data).toMatchObject({ estado: "ganaste" });
+        const reclamo = await admin.from("claims").select("claimed_at, message_id").eq("code_id", rojo.id).single();
+        expect(new Date(reclamo.data?.claimed_at).getTime()).toBe(new Date(hora).getTime());
+        expect(reclamo.data?.message_id).toBe(mensaje.data.id);
+      } finally {
+        await admin.from("chat_messages").delete().eq("id", mensaje.data.id);
+      }
     });
   });
 });

@@ -141,6 +141,13 @@
       "when": 1793987970734,
       "tag": "0019_anular_codigo_bloqueo",
       "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1793988359367,
+      "tag": "0020_reclamar_codigo",
+      "breakpoints": true
     }
   ]
 }

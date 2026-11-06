@@ -157,3 +157,20 @@ export async function lanzarPrueba(
   if (error) throw error;
   return { id: (data as { id: string }).id };
 }
+
+/** Reclama un código como lo haría el servidor (con la clave de servicio), sin mensaje del chat. */
+export async function reclamarPrueba(
+  userId: string,
+  codigoId: string,
+  nombre = "Prueba P.",
+): Promise<Record<string, unknown>> {
+  const { data, error } = await clienteAdmin().rpc("reclamar_codigo", {
+    p_user: userId,
+    p_codigo: codigoId,
+    p_nombre: nombre,
+    p_mensaje: null,
+    p_texto: "ROJO",
+  });
+  if (error) throw error;
+  return data as Record<string, unknown>;
+}

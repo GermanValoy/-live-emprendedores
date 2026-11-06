@@ -1,6 +1,6 @@
 "use client";
 
-import { type ReactNode, useEffect, useState } from "react";
+import { type ReactNode, useEffect, useRef, useState } from "react";
 import { datosEntrega, type DatosEntrega, elegirEntrega, informarPago } from "@/app/pedidos/acciones";
 import { Foto } from "@/components/fotos/foto";
 import { subirComprobante } from "@/lib/codigos/comprobante";
@@ -9,6 +9,7 @@ import type { Pedido } from "@/lib/codigos/tipos";
 import { ErrorDeFoto } from "@/lib/fotos/comprimir";
 import { formatARS } from "@/lib/format/plata";
 import { metodoDePago } from "@/lib/payments";
+import { alServidor, NO_GUARDO } from "@/lib/red";
 import { createClient } from "@/lib/supabase/client";
 import type { OpcionEntrega, TipoEntrega } from "@/lib/tiendas/tipos";
 
@@ -43,6 +44,14 @@ export function PanelPago({ pedido: recibido, tienda, opciones, codigo, festejar
   const [local, setLocal] = useState<Pedido | null>(null);
   const pedido = local && local.id === recibido.id && local.updated_at >= recibido.updated_at ? local : recibido;
   const [paso, setPaso] = useState<"datos" | "comprobante">("datos");
+
+  // Foco al panel al abrirse (cierra el teclado del celular y avisa a los lectores de pantalla); al cerrarse vuelve a donde estaba.
+  const dialogo = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const anterior = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    dialogo.current?.focus();
+    return () => { if (anterior?.isConnected) anterior.focus(); };
+  }, []);
 
   useEffect(() => {
     const alTeclear = (e: KeyboardEvent) => {
@@ -101,11 +110,13 @@ export function PanelPago({ pedido: recibido, tienda, opciones, codigo, festejar
       onClick={alCerrar}
     >
       <div
+        ref={dialogo}
+        tabIndex={-1}
         role="dialog"
         aria-modal="true"
         aria-label="Tu pedido"
         onClick={(e) => e.stopPropagation()}
-        className="flex max-h-[92dvh] w-full flex-col gap-4 overflow-y-auto rounded-t-3xl bg-background p-5 pb-[max(env(safe-area-inset-bottom),1.25rem)] text-foreground motion-safe:animate-in motion-safe:slide-in-from-bottom motion-safe:duration-(--duracion-sheet)"
+        className="flex max-h-[92dvh] w-full flex-col gap-4 overflow-y-auto rounded-t-3xl bg-background p-5 outline-none pb-[max(env(safe-area-inset-bottom),1.25rem)] text-foreground motion-safe:animate-in motion-safe:slide-in-from-bottom motion-safe:duration-(--duracion-sheet)"
       >
         <span aria-hidden="true" className="mx-auto -mt-2 h-1.5 w-10 shrink-0 rounded-full bg-border" />
         {contenido}
@@ -162,7 +173,7 @@ function PasoGanaste({
   const elegir = async (tipo: TipoEntrega) => {
     setOcupada(true);
     setError(null);
-    const r = await elegirEntrega(pedido.id, tipo);
+    const r = await alServidor(() => elegirEntrega(pedido.id, tipo));
     setOcupada(false);
     if (r.ok) alActualizar(r.pedido);
     else setError(r.error);
@@ -360,10 +371,13 @@ function Aviso({ emoji, titulo, children, boton, alCerrar }: { emoji: string; ti
 
 function PasoPagado({ pedido, tienda, alCerrar }: { pedido: Pedido; tienda: { name: string }; alCerrar(): void }) {
   const [datos, setDatos] = useState<DatosEntrega | null>(null);
+  const [falloLaRed, setFalloLaRed] = useState(false);
   useEffect(() => {
     let vigente = true;
-    void datosEntrega(pedido.id).then((r) => {
-      if (vigente) setDatos(r.ok ? r.datos : {});
+    void alServidor(() => datosEntrega(pedido.id)).then((r) => {
+      if (!vigente) return;
+      if ("datos" in r) setDatos(r.datos);
+      else { setDatos({}); setFalloLaRed("error" in r); }
     });
     return () => { vigente = false; };
   }, [pedido.id]);
@@ -390,6 +404,7 @@ function PasoPagado({ pedido, tienda, alCerrar }: { pedido: Pedido; tienda: { na
           </>
         )}
       </div>
+      {falloLaRed && <p role="alert" className="text-center text-sm font-bold text-destructive">{NO_GUARDO.replace("No se pudo guardar.", "No pudimos cargar los datos de la entrega.")}</p>}
       <button type="button" onClick={alCerrar} className={`${BOTON} bg-primary text-primary-foreground`}>
         Listo
       </button>

@@ -73,6 +73,7 @@ async function pedidoDe(storeId: string): Promise<string> {
 test("la compradora gana, elige envío, informa el pago y la feriante lo confirma", async ({ browser }) => {
   test.slow();
   const { mica, tienda, pagina } = await ganarRojo(browser);
+  await expect(pagina.getByRole("dialog")).toBeFocused();
   await expect(pagina.getByText("mica.ropa")).toBeVisible();
   await expect(pagina.getByText("Micaela Díaz")).toBeVisible();
   await expect(pagina.getByText("Tenés 1")).toBeVisible();

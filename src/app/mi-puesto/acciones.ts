@@ -207,8 +207,8 @@ export async function guardarCobro(datos: { payment_alias: string; payment_holde
 }
 
 /** Cuánto tiempo tiene quien gana un código para pagar (minutos). */
-export async function guardarPlazoDePago(minutos: number): Promise<Resultado> {
-  if (!PLAZOS_DE_PAGO.includes(minutos)) return { ok: false, error: "Elegí uno de los plazos." };
+export async function guardarPlazoDePago(minutos: number | null): Promise<Resultado> {
+  if (minutos !== null && !PLAZOS_DE_PAGO.includes(minutos)) return { ok: false, error: "Elegí uno de los plazos." };
   const sesion = await duenaActual();
   if (!sesion) return { ok: false, error: NO_GUARDO };
   const { supabase, tienda } = sesion;

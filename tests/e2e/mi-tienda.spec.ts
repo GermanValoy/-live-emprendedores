@@ -70,12 +70,20 @@ test("guarda el cobro y las entregas", async ({ page }) => {
 
 test("guarda el plazo para pagar", async ({ page }) => {
   await abrirMiTienda(page);
+  const plazoGuardado = async () => {
+    const { data, error } = await clienteAdmin().from("stores").select("payment_minutes").eq("id", tienda.id).single();
+    if (error) throw error;
+    return data.payment_minutes as number | null;
+  };
+  // Guardar sin tocar nada deja el plazo general de la plataforma (null).
+  await page.getByRole("button", { name: "Guardar plazo" }).click();
+  await expect(page.getByText("Plazo para pagar guardado")).toBeVisible();
+  expect(await plazoGuardado()).toBeNull();
+  await abrirMiTienda(page, true);
   await page.getByText("30 min", { exact: true }).click();
   await page.getByRole("button", { name: "Guardar plazo" }).click();
   await expect(page.getByText("Plazo para pagar guardado")).toBeVisible();
-  const { data, error } = await clienteAdmin().from("stores").select("payment_minutes").eq("id", tienda.id).single();
-  if (error) throw error;
-  expect(data.payment_minutes).toBe(30);
+  await expect.poll(plazoGuardado).toBe(30);
 });
 
 test("el selector de foto llega deshabilitado hasta que la página está activa", async ({ page }) => {

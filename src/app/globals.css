@@ -265,3 +265,51 @@
     opacity: 1;
   }
 }
+
+/* Festejo de "¡Ganaste!": lo único con animación grande de toda la app. Confeti que sale del emoji. */
+@keyframes festejo-emoji {
+  0% {
+    transform: scale(0.3) rotate(-18deg);
+    opacity: 0;
+  }
+  60% {
+    transform: scale(1.25) rotate(8deg);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1) rotate(0);
+    opacity: 1;
+  }
+}
+@keyframes festejo-confeti {
+  0% {
+    transform: translate(0, 0) rotate(0) scale(0.4);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(var(--dx), var(--dy)) rotate(var(--giro)) scale(1);
+    opacity: 0;
+  }
+}
+.festejo-emoji {
+  display: inline-block;
+  animation: festejo-emoji 600ms cubic-bezier(0.23, 1, 0.32, 1) both;
+}
+.festejo-confeti {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 8px;
+  height: 14px;
+  border-radius: 2px;
+  animation: festejo-confeti 1100ms cubic-bezier(0.23, 1, 0.32, 1) both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .festejo-emoji,
+  .festejo-confeti {
+    animation: none;
+  }
+  .festejo-confeti {
+    display: none;
+  }
+}

@@ -1,5 +1,7 @@
 import { sql } from "drizzle-orm";
-import { boolean, index, integer, pgEnum, pgTable, primaryKey, text, timestamp, unique, uniqueIndex, uuid } from "drizzle-orm/pg-core";
+import {
+  boolean, date, index, integer, pgEnum, pgTable, primaryKey, real, text, timestamp, unique, uniqueIndex, uuid,
+} from "drizzle-orm/pg-core";
 import { authUsers } from "drizzle-orm/supabase";
 
 /** Perfil público de cada persona. Se crea solo al registrarse (ver drizzle/0001_seguridad_users.sql). */
@@ -47,6 +49,8 @@ export const stores = pgTable("stores", {
   avatarPath: text("avatar_path"),
   coverPath: text("cover_path"),
   onboardingStep: integer("onboarding_step").notNull().default(2),
+  /** Plazo de pago propio de la feriante, en minutos. Nulo = el de code_config. */
+  paymentMinutes: integer("payment_minutes"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
@@ -197,6 +201,18 @@ export const chatMessages = pgTable(
   ],
 );
 
+/** Intentos de escribir de personas silenciadas (para que no puedan insistir sin límite). Solo la función de la base la usa. */
+export const chatSilencedAttempts = pgTable(
+  "chat_silenced_attempts",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+    liveSessionId: uuid("live_session_id").notNull().references(() => liveSessions.id, { onDelete: "cascade" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("chat_silenced_attempts_usuario_creado_idx").on(t.userId, t.createdAt)],
+);
+
 export const chatSilences = pgTable("chat_silences", {
   id: uuid("id").primaryKey().defaultRandom(),
   storeId: uuid("store_id").references(() => stores.id, { onDelete: "cascade" }),
@@ -221,3 +237,126 @@ export const moderationActions = pgTable("moderation_actions", {
   messageBody: text("message_body"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
+
+// Código en vivo (Fase 1, Parte 4). Reglas en drizzle/0018_seguridad_codigos.sql.
+
+/** Fila única con los números del código en vivo y de la voz. Se cambia por SQL; solo la lee el servidor. */
+export const codeConfig = pgTable("code_config", {
+  id: integer("id").primaryKey(),
+  plazoMinutos: integer("plazo_minutos").notNull().default(15),
+  cartelGanadoraSegundos: integer("cartel_ganadora_segundos").notNull().default(18),
+  listaEsperaMax: integer("lista_espera_max").notNull().default(5),
+  aceptarCasi: boolean("aceptar_casi").notNull().default(false),
+  vozUmbralMinimo: real("voz_umbral_minimo").notNull().default(0.012),
+  vozPrevioMs: integer("voz_previo_ms").notNull().default(600),
+  vozSilencioFinMs: integer("voz_silencio_fin_ms").notNull().default(800),
+  vozMaximoMs: integer("voz_maximo_ms").notNull().default(12000),
+  vozSolapeMs: integer("voz_solape_ms").notNull().default(2000),
+  vozMinimoVozMs: integer("voz_minimo_voz_ms").notNull().default(500),
+  vozSegundosPorDia: integer("voz_segundos_por_dia").notNull().default(10800),
+});
+
+export const liveCodes = pgTable(
+  "live_codes",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    liveSessionId: uuid("live_session_id").notNull().references(() => liveSessions.id, { onDelete: "cascade" }),
+    storeId: uuid("store_id").notNull().references(() => stores.id, { onDelete: "cascade" }),
+    /** Normalizada con normalizarCodigo (minúsculas, sin tildes ni signos). */
+    word: text("word").notNull(),
+    /** Como se muestra, en mayúsculas. */
+    label: text("label").notNull(),
+    priceCents: integer("price_cents").notNull(),
+    quantity: integer("quantity").notNull(),
+    sold: integer("sold").notNull().default(0),
+    photoPath: text("photo_path"),
+    productId: uuid("product_id").references(() => products.id, { onDelete: "set null" }),
+    byVoice: boolean("by_voice").notNull().default(false),
+    status: text("status").notNull().default("activo"),
+    lastWinnerName: text("last_winner_name"),
+    lastWinnerAt: timestamp("last_winner_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    closedAt: timestamp("closed_at", { withTimezone: true }),
+  },
+  (t) => [
+    unique("live_codes_vivo_palabra_unique").on(t.liveSessionId, t.word),
+    uniqueIndex("live_codes_un_activo_por_vivo").on(t.liveSessionId).where(sql`status = 'activo'`),
+    index("live_codes_store_id_idx").on(t.storeId),
+  ],
+);
+
+export const claims = pgTable(
+  "claims",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    codeId: uuid("code_id").notNull().references(() => liveCodes.id, { onDelete: "cascade" }),
+    userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+    buyerName: text("buyer_name").notNull(),
+    messageId: uuid("message_id").references(() => chatMessages.id, { onDelete: "set null" }),
+    /** Copia del texto: el chat se borra a los 30 días, la prueba de quién llegó primero queda acá. */
+    messageBody: text("message_body").notNull(),
+    claimedAt: timestamp("claimed_at", { withTimezone: true }).notNull().defaultNow(),
+    status: text("status").notNull(),
+  },
+  (t) => [
+    unique("claims_codigo_usuario_unique").on(t.codeId, t.userId),
+    index("claims_codigo_estado_hora_idx").on(t.codeId, t.status, t.claimedAt),
+    index("claims_user_id_idx").on(t.userId),
+  ],
+);
+
+export const orders = pgTable(
+  "orders",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    claimId: uuid("claim_id").notNull().unique().references(() => claims.id, { onDelete: "cascade" }),
+    codeId: uuid("code_id").notNull().references(() => liveCodes.id, { onDelete: "cascade" }),
+    storeId: uuid("store_id").notNull().references(() => stores.id, { onDelete: "cascade" }),
+    liveSessionId: uuid("live_session_id").notNull().references(() => liveSessions.id, { onDelete: "cascade" }),
+    buyerId: uuid("buyer_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+    buyerName: text("buyer_name").notNull(),
+    priceCents: integer("price_cents").notNull(),
+    deliveryKind: deliveryKind("delivery_kind"),
+    shippingCents: integer("shipping_cents"),
+    totalCents: integer("total_cents").notNull(),
+    /** Copias del alias y el titular con los que se mostró el pago. */
+    paymentAlias: text("payment_alias").notNull(),
+    paymentHolder: text("payment_holder").notNull(),
+    buyerWhatsapp: text("buyer_whatsapp"),
+    status: text("status").notNull().default("por_pagar"),
+    cancelReason: text("cancel_reason"),
+    deadline: timestamp("deadline", { withTimezone: true }).notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    reportedAt: timestamp("reported_at", { withTimezone: true }),
+    confirmedAt: timestamp("confirmed_at", { withTimezone: true }),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index("orders_store_estado_idx").on(t.storeId, t.status),
+    index("orders_compradora_creado_idx").on(t.buyerId, t.createdAt),
+    index("orders_estado_plazo_idx").on(t.status, t.deadline),
+    index("orders_code_id_idx").on(t.codeId),
+  ],
+);
+
+export const paymentReports = pgTable(
+  "payment_reports",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    orderId: uuid("order_id").notNull().references(() => orders.id, { onDelete: "cascade" }),
+    proofPath: text("proof_path").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("payment_reports_order_id_idx").on(t.orderId)],
+);
+
+/** Segundos de audio mandados a Whisper por puesto y por día (para controlar el costo). Solo el servidor. */
+export const voiceUsage = pgTable(
+  "voice_usage",
+  {
+    storeId: uuid("store_id").notNull().references(() => stores.id, { onDelete: "cascade" }),
+    day: date("day").notNull(),
+    seconds: real("seconds").notNull().default(0),
+  },
+  (t) => [primaryKey({ columns: [t.storeId, t.day] })],
+);

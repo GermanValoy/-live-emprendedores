@@ -54,7 +54,7 @@ async function entrar(browser: Browser, tienda: Puesto, usuario: UsuarioPrueba |
 }
 
 async function escribir(page: Page, texto: string) {
-  await page.getByPlaceholder("Escribí un mensaje…").fill(texto);
+  await page.getByPlaceholder("Escribí un mensaje o un código…").fill(texto);
   await page.getByRole("button", { name: "Enviar" }).click();
 }
 
@@ -96,7 +96,7 @@ test("la visitante lee pero no escribe", async ({ browser }) => {
   const visita = await entrar(browser, tienda, null);
   await expect(visita.getByText("buenas tardes")).toBeVisible();
   await expect(visita.getByRole("button", { name: "Entrá con Google para escribir" })).toBeVisible();
-  await expect(visita.getByPlaceholder("Escribí un mensaje…")).toHaveCount(0);
+  await expect(visita.getByPlaceholder("Escribí un mensaje o un código…")).toHaveCount(0);
 });
 
 test("un link solo lo ve quien lo escribió", async ({ browser }) => {
@@ -131,7 +131,7 @@ test("silenciada", async ({ browser }) => {
   const { error } = await mica.cliente.rpc("silenciar_en_sala", { p_store: tienda.id, p_user: caro.id, p_tipo: "temporal" });
   if (error) throw error;
   await expect(pagina.getByText("No podés escribir en este vivo por un rato.")).toBeVisible({ timeout: 10_000 });
-  await expect(pagina.getByPlaceholder("Escribí un mensaje…")).toHaveCount(0);
+  await expect(pagina.getByPlaceholder("Escribí un mensaje o un código…")).toHaveCount(0);
 });
 
 test("quien entra tarde ve los últimos mensajes", async ({ browser }) => {
@@ -154,7 +154,7 @@ test("enviar con el vivo cerrado", async ({ browser }) => {
   const { error } = await mica.cliente.rpc("terminar_vivo", { p_vivo: vivo });
   if (error) throw error;
   await expect(pagina.getByRole("heading", { name: "¡Gracias por venir!" })).toBeVisible({ timeout: 30_000 });
-  await expect(pagina.getByPlaceholder("Escribí un mensaje…")).toHaveCount(0);
+  await expect(pagina.getByPlaceholder("Escribí un mensaje o un código…")).toHaveCount(0);
   await expect(pagina.getByRole("button", { name: "Reintentar" })).toHaveCount(0);
 });
 
@@ -174,7 +174,7 @@ test("200 caracteres", async ({ browser }) => {
   const { tienda } = await nuevaMica();
   const caro = await nuevaCompradora("Carolina Medina");
   const pagina = await entrar(browser, tienda, caro);
-  const campo = pagina.getByPlaceholder("Escribí un mensaje…");
+  const campo = pagina.getByPlaceholder("Escribí un mensaje o un código…");
   await campo.fill("a".repeat(201));
   await expect(campo).toHaveValue("a".repeat(200));
 });

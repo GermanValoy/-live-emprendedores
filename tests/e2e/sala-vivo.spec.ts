@@ -2,6 +2,7 @@ import { devices, expect, test } from "@playwright/test";
 import { borrarUsuarioPrueba, clienteAdmin, crearUsuarioPrueba, type UsuarioPrueba } from "../helpers/usuario-prueba";
 import { borrarVivosDeTienda, crearTiendaPrueba, crearTransmisionPrueba } from "../helpers/tiendas-prueba";
 import { cookiesDeSesion } from "./sesion";
+import { responderVozVacia } from "./voz";
 
 // La transmisión apunta a cloudflare.invalid: el video nunca conecta. Se miran los carteles de cada estado.
 
@@ -164,6 +165,7 @@ test("cuenta como mirando", async ({ page, browser }) => {
   const { mica, tienda } = await nuevaMica();
   const contextoMica = await browser.newContext({ ...devices["Pixel 7"], permissions: ["camera", "microphone"], baseURL: test.info().project.use.baseURL });
   try {
+    await responderVozVacia(contextoMica);
     await contextoMica.addCookies(await cookiesDeSesion(mica.sesion));
     const estudio = await contextoMica.newPage();
     await estudio.goto("/mi-puesto/vivo");

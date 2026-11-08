@@ -1,5 +1,5 @@
 import { expect, type Page, test } from "@playwright/test";
-import { borrarUsuarioPrueba, crearUsuarioPrueba, type UsuarioPrueba } from "../helpers/usuario-prueba";
+import { borrarUsuarioPrueba, clienteAdmin, crearUsuarioPrueba, type UsuarioPrueba } from "../helpers/usuario-prueba";
 import { borrarFotosDeTienda, crearTiendaPrueba, handleAleatorio } from "../helpers/tiendas-prueba";
 import { elegirFoto } from "./fotos";
 import { cookiesDeSesion } from "./sesion";
@@ -66,6 +66,24 @@ test("guarda el cobro y las entregas", async ({ page }) => {
   await page.reload();
   await expect(page.getByLabel("Costo del envío")).toHaveValue("2.500");
   await expect(page.getByLabel("Alias")).toHaveValue("mica.ropa.yb");
+});
+
+test("guarda el plazo para pagar", async ({ page }) => {
+  await abrirMiTienda(page);
+  const plazoGuardado = async () => {
+    const { data, error } = await clienteAdmin().from("stores").select("payment_minutes").eq("id", tienda.id).single();
+    if (error) throw error;
+    return data.payment_minutes as number | null;
+  };
+  // Guardar sin tocar nada deja el plazo general de la plataforma (null).
+  await page.getByRole("button", { name: "Guardar plazo" }).click();
+  await expect(page.getByText("Plazo para pagar guardado")).toBeVisible();
+  expect(await plazoGuardado()).toBeNull();
+  await abrirMiTienda(page, true);
+  await page.getByText("30 min", { exact: true }).click();
+  await page.getByRole("button", { name: "Guardar plazo" }).click();
+  await expect(page.getByText("Plazo para pagar guardado")).toBeVisible();
+  await expect.poll(plazoGuardado).toBe(30);
 });
 
 test("el selector de foto llega deshabilitado hasta que la página está activa", async ({ page }) => {

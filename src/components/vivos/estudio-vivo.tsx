@@ -8,6 +8,11 @@ import { salirEnVivo, terminarVivo } from "@/app/mi-puesto/vivo/acciones";
 import { entrarConGoogle } from "@/app/auth/acciones";
 import { EnVivo } from "@/components/marca/en-vivo";
 import { ChatEstudio } from "@/components/chat/chat-estudio";
+import { CodigosEstudio } from "@/components/codigos/codigos-estudio";
+import { PedidosVivo } from "@/components/codigos/pedidos-vivo";
+import type { ProductoResumen } from "@/components/codigos/panel-codigo";
+import type { Codigo } from "@/lib/codigos/tipos";
+import type { ConfigDetector } from "@/lib/voz/detector";
 import { BotonAvisarWhatsapp } from "@/components/vivos/boton-avisar-whatsapp";
 import type { ConfigChat, MensajeChat } from "@/lib/chat/tipos";
 import { createClient } from "@/lib/supabase/client";
@@ -25,6 +30,7 @@ type Props = {
   config: ConfigVivo;
   vivoAbierto: Vivo | null;
   chat: { config: ConfigChat; mensajes: MensajeChat[]; userId: string };
+  codigos: { iniciales: Codigo[]; productos: ProductoResumen[]; voz: ConfigDetector };
 };
 
 /** Cómo terminó la transmisión en este celular. */
@@ -65,10 +71,12 @@ export function EstudioVivo(props: Props) {
 }
 
 function Estudio({
-  tienda, urlTransmitir, config, vivoAbierto, chat, salirSolo, alSalirSolo, alSalirDeNuevo,
+  tienda, urlTransmitir, config, vivoAbierto, chat, codigos, salirSolo, alSalirSolo, alSalirDeNuevo,
 }: Props & { salirSolo: boolean; alSalirSolo(): void; alSalirDeNuevo(): void }) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const transmisorRef = useRef<Transmisor | null>(null);
+  // El mismo transmisor, para la voz (que se suscribe a su micrófono).
+  const [transmisor, setTransmisor] = useState<Transmisor | null>(null);
   const senalRef = useRef<{ avisarAhora(): void; detener(): void } | null>(null);
   const limpiezasRef = useRef<(() => void)[]>([]);
   const dispositivoRef = useRef<string | null>(null);
@@ -137,6 +145,7 @@ function Estudio({
         if (cancelado) { t.detener(); return; }
         if (silenciadaRef.current) t.silenciar(true);
         transmisorRef.current = t;
+        setTransmisor(t);
         // Sale en vivo apenas prende la cámara. Sin cámara queda el aviso del permiso; si falla, el botón para reintentar.
         if (ultimoEstado === "vista-previa") alPrenderCamara();
       });
@@ -358,7 +367,7 @@ function Estudio({
       )}
 
       {silenciada && fase !== "fin" && (
-        <p className="absolute top-[calc(max(env(safe-area-inset-top),0.75rem)+3.25rem)] left-1/2 -translate-x-1/2 rounded-full bg-white px-4 py-1.5 text-sm font-extrabold text-primary shadow-lg">
+        <p className="absolute top-[calc(max(env(safe-area-inset-top),0.75rem)+3.25rem)] left-3 rounded-full bg-white px-4 py-1.5 text-sm font-extrabold text-primary shadow-lg">
           🔇 Silenciada
         </p>
       )}
@@ -431,6 +440,18 @@ function Estudio({
         />
       )}
 
+      {enVivo && vivo && (
+        <CodigosEstudio
+          vivoId={vivo.id}
+          storeId={tienda.id}
+          videoRef={videoRef}
+          inicial={codigos.iniciales}
+          productos={codigos.productos}
+          transmisor={transmisor}
+          configVoz={codigos.voz}
+        />
+      )}
+
       {enVivo && (
         <div className="absolute inset-x-0 bottom-0 flex items-end justify-between gap-3 px-3 pb-[max(env(safe-area-inset-bottom),1rem)]">
           <BotonAvisarWhatsapp handle={tienda.handle} momento="durante" />
@@ -474,7 +495,7 @@ function Estudio({
         </div>
       )}
 
-      {fase === "fin" && fin && <PantallaFin fin={fin} alSalirDeNuevo={alSalirDeNuevo} />}
+      {fase === "fin" && fin && <PantallaFin fin={fin} storeId={tienda.id} alSalirDeNuevo={alSalirDeNuevo} />}
     </div>
   );
 }
@@ -541,7 +562,7 @@ function PermisoCamara({ alProbar }: { alProbar(): void }) {
   );
 }
 
-function PantallaFin({ fin, alSalirDeNuevo }: { fin: Fin; alSalirDeNuevo(): void }) {
+function PantallaFin({ fin, storeId, alSalirDeNuevo }: { fin: Fin; storeId: string; alSalirDeNuevo(): void }) {
   // La hora se toma una sola vez al mostrar el resumen (solo se usa si el vivo no trae su hora de cierre).
   const [ahora] = useState(() => Date.now());
   const volver = (
@@ -598,6 +619,7 @@ function PantallaFin({ fin, alSalirDeNuevo }: { fin: Fin; alSalirDeNuevo(): void
           <dd className="text-3xl font-extrabold tabular-nums">{vivo.peak_viewers}</dd>
         </div>
       </dl>
+      <PedidosVivo storeId={storeId} vivoId={vivo.id} titulo="Pedidos de este vivo" />
       <div className="flex flex-col gap-3">
         {porAusencia && (
           <button

@@ -2,6 +2,7 @@ import { devices, expect, test, type Browser, type BrowserContext, type Page } f
 import { borrarUsuarioPrueba, clienteAdmin, crearUsuarioPrueba, type UsuarioPrueba } from "../helpers/usuario-prueba";
 import { borrarChatDeTienda, borrarVivosDeTienda, crearTiendaPrueba, crearTransmisionPrueba, publicarPrueba } from "../helpers/tiendas-prueba";
 import { cookiesDeSesion } from "./sesion";
+import { responderVozVacia } from "./voz";
 
 // La transmisión apunta a cloudflare.invalid: el video nunca conecta; acá solo importa el chat del estudio.
 
@@ -46,6 +47,7 @@ async function abrirEstudio(browser: Browser, mica: UsuarioPrueba): Promise<Page
     permissions: ["camera", "microphone"],
   });
   contextos.push(contexto);
+  await responderVozVacia(contexto);
   await contexto.addCookies(await cookiesDeSesion(mica.sesion));
   const page = await contexto.newPage();
   await page.goto("/mi-puesto/vivo");
@@ -65,7 +67,7 @@ async function entrar(browser: Browser, tienda: Puesto, usuario: UsuarioPrueba):
 }
 
 async function escribir(page: Page, texto: string) {
-  await page.getByPlaceholder("Escribí un mensaje…").fill(texto);
+  await page.getByPlaceholder(/^Escribí un mensaje/).fill(texto);
   await page.getByRole("button", { name: "Enviar" }).click();
 }
 
@@ -120,7 +122,7 @@ test("silenciar 10 minutos", async ({ browser }) => {
   await estudio.getByRole("button", { name: /Silenciar 10 minutos/ }).click();
   await expect(estudio.getByText("Silenciaste a Carolina M. por 10 minutos.")).toBeVisible();
   await expect(paginaCaro.getByText("No podés escribir en este vivo por un rato.")).toBeVisible({ timeout: 10_000 });
-  await expect(paginaCaro.getByPlaceholder("Escribí un mensaje…")).toHaveCount(0);
+  await expect(paginaCaro.getByPlaceholder("Escribí un mensaje o un código…")).toHaveCount(0);
 });
 
 test("silenciar en mi sala", async ({ browser }) => {

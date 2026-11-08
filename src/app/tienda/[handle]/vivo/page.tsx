@@ -5,11 +5,13 @@ import { cache, Suspense } from "react";
 import { EstadoVacio } from "@/components/estado-vacio";
 import { buttonVariants } from "@/components/ui/button";
 import { SalaVivo } from "@/components/vivos/sala-vivo";
+import { obtenerConfigCodigo } from "@/lib/codigos/config";
+import { CAMPOS_CODIGO, type Codigo } from "@/lib/codigos/tipos";
 import { obtenerConfigChat } from "@/lib/chat/config";
 import { mensajesIniciales, miSilencio } from "@/lib/chat/datos";
 import { obtenerUsuarioId } from "@/lib/auth/sesion";
 import { createClient } from "@/lib/supabase/server";
-import { idsSeguidos, listarProductos, obtenerTiendaPorHandle } from "@/lib/tiendas/datos";
+import { idsSeguidos, listarProductos, obtenerEntregas, obtenerTiendaPorHandle } from "@/lib/tiendas/datos";
 import { handleDeRuta } from "@/lib/tiendas/validacion";
 import { obtenerConfigVivo, vivoAbiertoDe } from "@/lib/vivos/datos";
 
@@ -27,6 +29,12 @@ export async function generateMetadata({ params }: PageProps<"/tienda/[handle]/v
   return { title: tienda ? `Vivo de ${tienda.name} · Tu Feria Live` : "Puesto no encontrado · Tu Feria Live" };
 }
 
+async function codigosDelVivo(supabase: Awaited<ReturnType<typeof createClient>>, vivoId: string): Promise<Codigo[]> {
+  const { data, error } = await supabase.from("live_codes").select(CAMPOS_CODIGO).eq("live_session_id", vivoId).order("created_at");
+  if (error) throw error;
+  return (data as Codigo[] | null) ?? [];
+}
+
 async function Contenido({ params }: { params: Promise<{ handle: string }> }) {
   await connection();
   const { handle } = await params;
@@ -40,16 +48,19 @@ async function Contenido({ params }: { params: Promise<{ handle: string }> }) {
   }
   const supabase = await createClient();
   const userId = await obtenerUsuarioId(supabase);
-  const [productos, vivo, config, seguidos, configChat] = await Promise.all([
+  const [productos, vivo, config, seguidos, configChat, configCodigo, entregas] = await Promise.all([
     listarProductos(supabase, tienda.id),
     vivoAbiertoDe(supabase, tienda.id),
     obtenerConfigVivo(supabase),
     userId ? idsSeguidos(supabase, userId) : Promise.resolve(new Set<string>()),
     obtenerConfigChat(),
+    obtenerConfigCodigo(),
+    obtenerEntregas(supabase, tienda.id),
   ]);
-  const [mensajes, silencio] = await Promise.all([
+  const [mensajes, silencio, codigos] = await Promise.all([
     vivo ? mensajesIniciales(supabase, vivo.id, configChat.mensajes_al_entrar) : Promise.resolve([]),
     userId ? miSilencio(supabase, tienda.id, userId) : Promise.resolve(null),
+    vivo ? codigosDelVivo(supabase, vivo.id) : Promise.resolve([]),
   ]);
   const visibles = productos
     .filter((p) => p.visible)
@@ -59,7 +70,7 @@ async function Contenido({ params }: { params: Promise<{ handle: string }> }) {
   return (
     <SalaVivo
       tienda={{
-        id: tienda.id, handle: tienda.handle, name: tienda.name,
+        id: tienda.id, handle: tienda.handle, name: tienda.name, zone: tienda.zone,
         avatar_path: tienda.avatar_path, live_schedule_note: tienda.live_schedule_note,
       }}
       productos={visibles}
@@ -69,6 +80,8 @@ async function Contenido({ params }: { params: Promise<{ handle: string }> }) {
       esMia={tienda.owner_id === userId}
       conSesion={Boolean(userId)}
       chat={{ config: configChat, mensajes, silencio, userId }}
+      codigos={{ iniciales: codigos, cartelSegundos: configCodigo.cartel_ganadora_segundos }}
+      entregas={entregas}
     />
   );
 }

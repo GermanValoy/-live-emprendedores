@@ -27,6 +27,7 @@ function secretos(): Record<string, string | undefined> {
     SUPABASE_SECRET_KEY: process.env.SUPABASE_SECRET_KEY,
     CLOUDFLARE_STREAM_API_TOKEN: process.env.CLOUDFLARE_STREAM_API_TOKEN,
     CLOUDFLARE_ACCOUNT_ID: process.env.CLOUDFLARE_ACCOUNT_ID,
+    CLOUDFLARE_AI_API_TOKEN: process.env.CLOUDFLARE_AI_API_TOKEN,
     "la contraseña de DATABASE_URL": contrasenaBase,
   };
 }

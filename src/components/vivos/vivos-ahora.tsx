@@ -74,6 +74,9 @@ export function VivosAhora({ iniciales, config }: { iniciales: VivoEnPortada[]; 
       // wait: la base confirma el SUBSCRIBED recién cuando ya escucha los cambios (sin huecos entre la conexión y la escucha).
       .channel(`portada:vivos:${crypto.randomUUID()}`, { config: { postgres_changes_options: { wait: true } } })
       .on("postgres_changes", { event: "INSERT", ...filtro }, recargar)
+      // El código que se está vendiendo se ve en la tarjeta: si cambia, se piden los datos de nuevo.
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "live_codes" }, recargar)
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "live_codes" }, recargar)
       .on("postgres_changes", { event: "UPDATE", ...filtro }, (cambio) => {
         const fila = cambio.new as Vivo;
         if (fila.ended_at) return recargar();

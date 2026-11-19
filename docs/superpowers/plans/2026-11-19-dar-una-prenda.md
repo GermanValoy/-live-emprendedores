@@ -85,7 +85,7 @@
 - Produces: `darPrenda(codigoId: string, mensajeId: string, textos: { nombre: string; etiqueta: string }): Promise<Resultado>` — valida los dos uuid con zod, llama el rpc y traduce el error a los textos de Global Constraints (`textos` solo arma los mensajes; no se guarda nada de ahí).
 
 - [ ] **Step 1: Prueba de `prendasLibres`**: con un activo, un anulado, un cerrado agotado y dos cerrados con unidades (creados en distinto orden) devuelve solo los dos cerrados con unidades, el más nuevo primero.
-- [ ] **Step 2: Verla fallar, implementar `prendasLibres`, verla pasar** (`npx vitest run src/components/codigos`).
+- [ ] **Step 2: Verla fallar, implementar `prendasLibres`, verla pasar** (`npx vitest run src/lib/codigos/prendas.test.ts`).
 - [ ] **Step 3: `darPrenda`** en `acciones-codigos.ts` y su traducción de errores (`agotado`, `repetido`, `cerrado`, `no_disponible`).
 - [ ] **Step 4: `PanelDarPrenda`**: mismo estilo de hoja que sube desde abajo que `PanelModerar` (diálogo con `aria-modal`, Escape y tocar afuera cierran, botón Cancelar con foco). Cada prenda es un botón de al menos 56 px de alto con la foto (`Foto tamano="chica"`, o un cuadrado vacío si no tiene), la etiqueta, el precio y "Quedan N". Al tocar: deshabilita los botones, llama `darPrenda` con `alServidor`, `toast.success` o `toast.error` con el texto devuelto, y cierra.
 - [ ] **Step 5: Conectar** `PanelModerar` → `ChatEstudio` → `EstudioVivo` → `CodigosEstudio`. Solo en el estudio (la sala no cambia).

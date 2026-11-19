@@ -1,0 +1,1 @@
+ALTER TABLE "orders" ADD COLUMN "given_by_owner" boolean DEFAULT false NOT NULL;

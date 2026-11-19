@@ -323,6 +323,8 @@ export const orders = pgTable(
     paymentAlias: text("payment_alias").notNull(),
     paymentHolder: text("payment_holder").notNull(),
     buyerWhatsapp: text("buyer_whatsapp"),
+    /** true solo en los pedidos que la feriante armó con "dar prenda" (no ganó por el chat). */
+    givenByOwner: boolean("given_by_owner").notNull().default(false),
     status: text("status").notNull().default("por_pagar"),
     cancelReason: text("cancel_reason"),
     deadline: timestamp("deadline", { withTimezone: true }).notNull(),

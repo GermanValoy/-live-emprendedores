@@ -9,6 +9,7 @@ import { ErrorDeFoto } from "@/lib/fotos/comprimir";
 import { subirFoto } from "@/lib/fotos/subir";
 import type { Transmisor } from "@/lib/vivos/transmisor";
 import type { ConfigDetector } from "@/lib/voz/detector";
+import { PanelDarPrenda, type Destinataria } from "./panel-dar-prenda";
 import { CodigoActivo } from "./codigo-activo";
 import { IndicadorVoz } from "./indicador-voz";
 import { PedidosVivo } from "./pedidos-vivo";
@@ -27,13 +28,16 @@ type Props = {
   transmisor: Transmisor | null;
   /** Los números del detector de voz (de `code_config`). */
   configVoz: ConfigDetector;
+  /** A quién se le está dando una prenda (la feriante tocó su mensaje), o null. */
+  darA: Destinataria | null;
+  alTerminarDarA(): void;
 };
 
 /** El cartel abierto. `id` cambia con cada cartel nuevo, así uno nuevo reemplaza al anterior. */
 type Panel = { datos: Borrador; id: number };
 
 /** Lo de los códigos en el estudio: el botón para crear uno, el cartel para lanzarlo y la barra del código activo. */
-export function CodigosEstudio({ vivoId, storeId, videoRef, inicial, productos, transmisor, configVoz }: Props) {
+export function CodigosEstudio({ vivoId, storeId, videoRef, inicial, productos, transmisor, configVoz, darA, alTerminarDarA }: Props) {
   const { activo, codigos, releer } = useCodigosVivo(vivoId, inicial);
   const [panel, setPanel] = useState<Panel | null>(null);
   const [revisando, setRevisando] = useState(false);
@@ -146,6 +150,7 @@ export function CodigosEstudio({ vivoId, storeId, videoRef, inicial, productos, 
           </div>
         </div>
       )}
+      {darA && <PanelDarPrenda destinataria={darA} codigos={codigos} alCerrar={alTerminarDarA} />}
       {panel && (
         <PanelCodigo
           key={panel.id}

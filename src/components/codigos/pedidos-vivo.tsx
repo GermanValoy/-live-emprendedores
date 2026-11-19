@@ -71,6 +71,7 @@ function FilaPedido({ pedido, codigo }: { pedido: Pedido; codigo: CodigoDePedido
           <b className="block truncate text-base">{codigo?.label ?? "Prenda"}</b>
           <span className="block">{pedido.delivery_kind ? ENTREGA[pedido.delivery_kind] : "Entrega sin elegir"}</span>
           <b className="block">{ESTADO[pedido.status]}</b>
+          {pedido.given_by_owner && <span className="block text-xs text-muted-foreground">Se la diste vos</span>}
         </p>
         <b className="text-lg tabular-nums">{formatARS(pedido.total_cents)}</b>
       </div>

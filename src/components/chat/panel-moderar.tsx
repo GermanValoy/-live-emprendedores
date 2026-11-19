@@ -4,6 +4,8 @@ import { useEffect } from "react";
 
 type Props = {
   nombre: string;
+  /** Si está, la primera opción es darle una prenda a quien escribió. */
+  alDarPrenda?(): void;
   alBorrar(): void;
   alSilenciarTemporal(): void;
   alSilenciarSala(): void;
@@ -14,7 +16,7 @@ const OPCION =
   "flex min-h-14 w-full flex-col items-start justify-center rounded-2xl bg-secondary px-4 py-2 text-left outline-none focus-visible:ring-3 focus-visible:ring-ring/50";
 
 /** Lo que puede hacer la feriante al tocar el mensaje de otra persona. Sube desde abajo; sin confirmación extra. */
-export function PanelModerar({ nombre, alBorrar, alSilenciarTemporal, alSilenciarSala, alCerrar }: Props) {
+export function PanelModerar({ nombre, alDarPrenda, alBorrar, alSilenciarTemporal, alSilenciarSala, alCerrar }: Props) {
   useEffect(() => {
     const alTeclear = (e: KeyboardEvent) => {
       if (e.key === "Escape") alCerrar();
@@ -34,6 +36,12 @@ export function PanelModerar({ nombre, alBorrar, alSilenciarTemporal, alSilencia
       >
         <p id="moderar-titulo" className="text-lg font-extrabold">{nombre}</p>
         <p className="text-sm text-muted-foreground">Tocaste su mensaje</p>
+        {alDarPrenda && (
+          <button type="button" onClick={alDarPrenda} className={OPCION}>
+            <span className="font-bold">Darle una prenda</span>
+            <span className="text-sm text-muted-foreground">De un código que ya pasó</span>
+          </button>
+        )}
         <button type="button" onClick={alBorrar} className={`${OPCION} font-bold`}>
           Borrar este mensaje
         </button>

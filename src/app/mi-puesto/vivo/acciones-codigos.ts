@@ -77,3 +77,25 @@ async function llamar(funcion: "cerrar_codigo" | "anular_codigo" | "anular_recla
 export const cerrarCodigo = async (codigoId: string) => llamar("cerrar_codigo", "p_codigo", codigoId);
 export const anularCodigo = async (codigoId: string) => llamar("anular_codigo", "p_codigo", codigoId);
 export const anularReclamo = async (reclamoId: string) => llamar("anular_reclamo", "p_reclamo", reclamoId);
+
+/** Le da una prenda sin vender de un código que ya pasó a quien preguntó por ella en el chat. */
+export async function darPrenda(
+  codigoId: string,
+  mensajeId: string,
+  textos: { nombre: string; etiqueta: string },
+): Promise<Resultado & { texto?: string }> {
+  if (!uuid.safeParse(codigoId).success || !uuid.safeParse(mensajeId).success) return { ok: false, error: ERROR_GENERICO };
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("dar_prenda", { p_codigo: codigoId, p_mensaje: mensajeId });
+  if (error) {
+    console.error("darPrenda", error.message);
+    const m = error.message ?? "";
+    if (m.includes("agotado")) return { ok: false, error: `Ya no quedan unidades de ${textos.etiqueta}.` };
+    if (m.includes("repetido")) return { ok: false, error: `${textos.nombre} ya tiene el ${textos.etiqueta}.` };
+    if (m.includes("no_disponible")) return { ok: false, error: "Ese código ya no se puede dar." };
+    if (m.includes("cerrado")) return { ok: false, error: "Este vivo ya terminó." };
+    return { ok: false, error: ERROR_GENERICO };
+  }
+  const nombre = typeof data === "string" && data ? data : textos.nombre;
+  return { ok: true, texto: `Le diste el ${textos.etiqueta} a ${nombre}.` };
+}

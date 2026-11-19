@@ -9,6 +9,7 @@ import { entrarConGoogle } from "@/app/auth/acciones";
 import { EnVivo } from "@/components/marca/en-vivo";
 import { ChatEstudio } from "@/components/chat/chat-estudio";
 import { CodigosEstudio } from "@/components/codigos/codigos-estudio";
+import type { Destinataria } from "@/components/codigos/panel-dar-prenda";
 import { PedidosVivo } from "@/components/codigos/pedidos-vivo";
 import type { ProductoResumen } from "@/components/codigos/panel-codigo";
 import type { Codigo } from "@/lib/codigos/tipos";
@@ -98,6 +99,7 @@ function Estudio({
   const [terminando, setTerminando] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [consejo, setConsejo] = useState(false);
+  const [darA, setDarA] = useState<Destinataria | null>(null);
 
   // El consejo de no salir de la pantalla se ve también al arrancar el vivo, unos segundos.
   useEffect(() => {
@@ -437,6 +439,7 @@ function Estudio({
           config={chat.config}
           userId={chat.userId}
           claseBase="bottom-[calc(max(env(safe-area-inset-bottom),1rem)+3.75rem)]"
+          alDarPrenda={setDarA}
         />
       )}
 
@@ -449,6 +452,8 @@ function Estudio({
           productos={codigos.productos}
           transmisor={transmisor}
           configVoz={codigos.voz}
+          darA={darA}
+          alTerminarDarA={() => setDarA(null)}
         />
       )}
 

@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { connection } from "next/server";
 import { Suspense } from "react";
+import { obtenerConfigCodigo } from "@/lib/codigos/config";
 import { obtenerUsuarioId } from "@/lib/auth/sesion";
 import { createClient } from "@/lib/supabase/server";
 import { obtenerDatosPrivados, obtenerEntregas, obtenerMiTienda } from "@/lib/tiendas/datos";
@@ -12,8 +13,13 @@ async function Contenido() {
   const userId = await obtenerUsuarioId(supabase);
   const tienda = userId ? await obtenerMiTienda(supabase, userId) : null;
   if (!tienda) redirect("/mi-puesto");
-  const [privados, opciones] = await Promise.all([obtenerDatosPrivados(supabase, tienda.id), obtenerEntregas(supabase, tienda.id)]);
-  return <SeccionesMiTienda tienda={tienda} privados={privados} opciones={opciones} />;
+  const [privados, opciones, plazo, config] = await Promise.all([
+    obtenerDatosPrivados(supabase, tienda.id),
+    obtenerEntregas(supabase, tienda.id),
+    supabase.from("stores").select("payment_minutes").eq("id", tienda.id).maybeSingle(),
+    obtenerConfigCodigo(),
+  ]);
+  return <SeccionesMiTienda tienda={tienda} privados={privados} opciones={opciones} plazo={(plazo.data?.payment_minutes as number | null) ?? null} plazoGeneral={config.plazo_minutos} />;
 }
 
 export default function MiTiendaPage() {

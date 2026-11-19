@@ -5,7 +5,7 @@ if (existsSync(".env.local")) process.loadEnvFile(".env.local");
 
 const enCI = !!process.env.CI;
 /** Pruebas que necesitan cámara y micrófono (la pantalla para salir en vivo y la sala). */
-const CON_CAMARA = /(estudio-vivo|sala-vivo|chat-estudio)\.spec\.ts/;
+const CON_CAMARA = /(estudio-vivo|sala-vivo|chat-estudio|codigo-estudio|pedidos-feriante|codigo-completo)\.spec\.ts/;
 
 export default defineConfig({
   testDir: "tests/e2e",

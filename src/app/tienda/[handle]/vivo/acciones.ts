@@ -5,14 +5,21 @@ import { largoVisible, limpiarTexto, moderar, normalizar } from "@/lib/chat/mode
 import { nombreCorto } from "@/lib/chat/nombre";
 import type { MensajeChat, SilencioChat } from "@/lib/chat/tipos";
 import { obtenerUsuarioId } from "@/lib/auth/sesion";
+import { procesarReclamo } from "@/lib/codigos/reclamar";
+import type { ResultadoReclamo } from "@/lib/codigos/tipos";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export type ResultadoEnvio =
-  | { ok: true; mensaje: MensajeChat }
-  | { ok: false; motivo: "sin_sesion" | "cerrado" | "rafaga" | "silenciada" | "invalido" | "error"; silencio?: SilencioChat };
+  | { ok: true; mensaje: MensajeChat; reclamo?: ResultadoReclamo }
+  | {
+      ok: false;
+      motivo: "sin_sesion" | "cerrado" | "rafaga" | "silenciada" | "invalido" | "error";
+      silencio?: SilencioChat;
+      reclamo?: ResultadoReclamo;
+    };
 
 /** Publica un mensaje en el chat del vivo: valida, modera y lo guarda con la función de la base. */
 export async function enviarMensaje(vivoId: string, texto: string): Promise<ResultadoEnvio> {
@@ -38,10 +45,11 @@ export async function enviarMensaje(vivoId: string, texto: string): Promise<Resu
     if (!vivo.data) return { ok: false, motivo: "cerrado" };
     const esFeriante = suya.data?.id === vivo.data.store_id;
 
+    const nombre = nombreCorto(perfil.data?.display_name ?? "");
     const { data, error } = await admin.rpc("publicar_mensaje", {
       p_user: userId,
       p_vivo: vivoId,
-      p_nombre: nombreCorto(perfil.data?.display_name ?? ""),
+      p_nombre: nombre,
       p_texto: limpio,
       p_normalizado: normalizar(limpio),
       p_motivo: moderar(limpio, palabras, esFeriante),
@@ -51,10 +59,33 @@ export async function enviarMensaje(vivoId: string, texto: string): Promise<Resu
       throw error;
     }
     const r = data as { estado: string; tipo?: SilencioChat; mensaje?: MensajeChat };
-    if (r.estado === "ok" && r.mensaje) return { ok: true, mensaje: r.mensaje };
+
+    // Si dice el código activo, se reclama enseguida (el mismo orden que los mensajes). Un fallo acá no tira el mensaje.
+    const reclamar = async (estadoChat: "ok" | "repetido" | "silenciada" | "rafaga" | "silenciada_rafaga", mensajeId: string | null) => {
+      try {
+        return (await procesarReclamo(admin, { userId, vivoId, nombre, texto: limpio, mensajeId, estadoChat })) ?? undefined;
+      } catch (e) {
+        console.error("Código: no se pudo reclamar", e instanceof Error ? e.message : e);
+        return undefined;
+      }
+    };
+
+    if (r.estado === "ok" && r.mensaje) {
+      const reclamo = await reclamar(r.mensaje.hidden_reason === "repetido" ? "repetido" : "ok", r.mensaje.id);
+      return reclamo ? { ok: true, mensaje: r.mensaje, reclamo } : { ok: true, mensaje: r.mensaje };
+    }
     if (r.estado === "cerrado") return { ok: false, motivo: "cerrado" };
-    if (r.estado === "rafaga") return { ok: false, motivo: "rafaga" };
-    if (r.estado === "silenciada") return { ok: false, motivo: "silenciada", silencio: r.tipo ?? "temporal" };
+    if (r.estado === "rafaga") {
+      // Pasada del límite el mensaje no se publica, pero un reclamo igual cuenta, salvo que esté silenciada (ahí el límite protege).
+      const silencio = await admin.rpc("esta_silenciada", { p_store: vivo.data.store_id, p_user: userId });
+      if (silencio.error) throw silencio.error;
+      const reclamo = await reclamar(silencio.data ? "silenciada_rafaga" : "rafaga", null);
+      return { ok: false, motivo: "rafaga", ...(reclamo ? { reclamo } : {}) };
+    }
+    if (r.estado === "silenciada") {
+      const reclamo = await reclamar("silenciada", null);
+      return { ok: false, motivo: "silenciada", silencio: r.tipo ?? "temporal", ...(reclamo ? { reclamo } : {}) };
+    }
     return { ok: false, motivo: "error" };
   } catch (e) {
     console.error("Chat: no se pudo publicar el mensaje", e instanceof Error ? e.message : e);

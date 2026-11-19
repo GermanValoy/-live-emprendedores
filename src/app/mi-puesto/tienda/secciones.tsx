@@ -4,10 +4,11 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { FormularioCobro } from "@/components/tiendas/formulario-cobro";
 import { FormularioDatosTienda } from "@/components/tiendas/formulario-datos-tienda";
+import { FormularioPlazo } from "@/components/tiendas/formulario-plazo";
 import { FormularioEntregas } from "@/components/tiendas/formulario-entregas";
 import type { DatosPrivados, OpcionEntrega, Tienda } from "@/lib/tiendas/tipos";
 
-export function SeccionesMiTienda({ tienda, privados, opciones }: { tienda: Tienda; privados: DatosPrivados | null; opciones: OpcionEntrega[] }) {
+export function SeccionesMiTienda({ tienda, privados, opciones, plazo, plazoGeneral }: { tienda: Tienda; plazo: number | null; plazoGeneral: number; privados: DatosPrivados | null; opciones: OpcionEntrega[] }) {
   const router = useRouter();
   const listo = (mensaje: string) => () => {
     toast.success(mensaje);
@@ -22,6 +23,7 @@ export function SeccionesMiTienda({ tienda, privados, opciones }: { tienda: Tien
       <section className="flex flex-col gap-3">
         <h2 className="text-lg font-bold">Cómo cobrás</h2>
         <FormularioCobro inicial={privados ?? undefined} textoBoton="Guardar cobro" alGuardar={listo("Datos de cobro guardados")} />
+        <FormularioPlazo inicial={plazo} general={plazoGeneral} alGuardar={listo("Plazo para pagar guardado")} />
       </section>
       <section className="flex flex-col gap-3">
         <h2 className="text-lg font-bold">Cómo entregás</h2>

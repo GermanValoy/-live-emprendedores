@@ -120,6 +120,76 @@
       "when": 1793930249035,
       "tag": "0016_seguridad_no_seguirse",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1793987183829,
+      "tag": "0017_bitter_senator_kelly",
+      "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1793987218348,
+      "tag": "0018_seguridad_codigos",
+      "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1793987970734,
+      "tag": "0019_anular_codigo_bloqueo",
+      "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1793988359367,
+      "tag": "0020_reclamar_codigo",
+      "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1793989274522,
+      "tag": "0021_pedidos",
+      "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "7",
+      "when": 1793989904557,
+      "tag": "0022_vencer_pedidos_aviso",
+      "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1793991393307,
+      "tag": "0023_dear_monster_badoon",
+      "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1793991402435,
+      "tag": "0024_reclamo_silenciada_rafaga",
+      "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "7",
+      "when": 1793996692891,
+      "tag": "0025_seguridad_plazo_de_pago",
+      "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "7",
+      "when": 1793997904024,
+      "tag": "0026_sumar_voz",
+      "breakpoints": true
     }
   ]
 }

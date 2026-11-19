@@ -2,12 +2,17 @@ import { expect, type Page, test } from "@playwright/test";
 import { borrarUsuarioPrueba, clienteAdmin, crearUsuarioPrueba, type UsuarioPrueba } from "../helpers/usuario-prueba";
 import { borrarVivosDeTienda, crearTiendaPrueba, crearTransmisionPrueba, hacerAdmin } from "../helpers/tiendas-prueba";
 import { cookiesDeSesion } from "./sesion";
+import { responderVozVacia } from "./voz";
 
 // La transmisión apunta a cloudflare.invalid: el video nunca conecta. Se miran botones y estados.
 
 const usuarios: UsuarioPrueba[] = [];
 const tiendas: string[] = [];
 let admin: UsuarioPrueba;
+
+test.beforeEach(async ({ context }) => {
+  await responderVozVacia(context);
+});
 
 test.beforeAll(async () => {
   admin = await crearUsuarioPrueba({ nombre: "Admin Estudio" });

@@ -10,7 +10,7 @@ test("una compradora ve Inicio, Seguidos, Mis compras y Cuenta", async ({ page }
     await expect(barra.getByRole("link", { name: texto })).toBeVisible();
   }
   await expect(barra.getByRole("link", { name: "Mis compras" })).toHaveAttribute("aria-current", "page");
-  await expect(page.getByText("Cuando ganes un código, lo vas a ver acá.")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Entrar con Google" })).toBeVisible();
 });
 
 test("Seguidos sin sesión invita a entrar y vuelve a Seguidos", async ({ page }) => {

@@ -1,6 +1,6 @@
 export const TAMANOS_FOTO = { chica: 400, grande: 1200 } as const;
 export type TamanoFoto = keyof typeof TAMANOS_FOTO;
-export type CarpetaFoto = "perfil" | "portada" | "productos";
+export type CarpetaFoto = "perfil" | "portada" | "productos" | "codigos";
 export const BUCKET_FOTOS = "tienda-fotos";
 
 /** Achica (nunca agranda) para que el lado mayor no pase de `maximo`. */

@@ -3,18 +3,21 @@
 import { cn } from "cn";
 import Link from "next/link";
 import { type ReactNode, useLayoutEffect, useRef, useState } from "react";
-import { ChatSala } from "@/components/chat/chat-sala";
+import { CodigosSala } from "@/components/codigos/codigos-sala";
+import { PagosTerminado } from "@/components/codigos/pagos-terminado";
 import { Foto } from "@/components/fotos/foto";
 import { EnVivo } from "@/components/marca/en-vivo";
 import { BotonSeguir } from "@/components/tiendas/boton-seguir";
 import { EsperaFeria } from "@/components/vivos/espera-feria";
 import { useSalaVivo } from "@/components/vivos/use-sala-vivo";
+import type { Codigo } from "@/lib/codigos/tipos";
 import type { ConfigChat, MensajeChat, SilencioChat } from "@/lib/chat/tipos";
 import { formatARS } from "@/lib/format/plata";
+import type { OpcionEntrega } from "@/lib/tiendas/tipos";
 import type { ConfigVivo, Vivo } from "@/lib/vivos/tipos";
 
 type Props = {
-  tienda: { id: string; handle: string; name: string; avatar_path: string | null; live_schedule_note: string | null };
+  tienda: { id: string; handle: string; name: string; zone: string; avatar_path: string | null; live_schedule_note: string | null };
   /** Hasta 3 productos visibles, con su primera foto. */
   productos: { id: string; price_cents: number; foto: string | null }[];
   vivoInicial: Vivo | null;
@@ -25,6 +28,10 @@ type Props = {
   conSesion: boolean;
   /** El chat: valores, últimos mensajes, mi silencio y quién soy (null: visitante). */
   chat: { config: ConfigChat; mensajes: MensajeChat[]; silencio: SilencioChat; userId: string | null };
+  /** Los códigos del vivo al cargar y cuántos segundos queda el cartel de la ganadora. */
+  codigos: { iniciales: Codigo[]; cartelSegundos: number };
+  /** Las formas de entrega del puesto, para elegirla al ganar un código. */
+  entregas: OpcionEntrega[];
 };
 
 /** La sala de la compradora: espera animada, el vivo a pantalla completa y, al terminar, otra vez la espera. Siempre oscura. */
@@ -36,7 +43,7 @@ export function SalaVivo(props: Props) {
   return <Sala key={visita} {...props} />;
 }
 
-function Sala({ tienda, productos, vivoInicial, config, siguiendo, esMia, conSesion, chat }: Props) {
+function Sala({ tienda, productos, vivoInicial, config, siguiendo, esMia, conSesion, chat, codigos, entregas }: Props) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const { vivo, estado, mirando, reproduccion, sinSonido, activarSonido, canalListo } = useSalaVivo(tienda.id, vivoInicial, config, videoRef);
   const abierto = estado === "en-vivo" || estado === "vuelve-pronto" || estado === "reconectando-feriante";
@@ -88,6 +95,17 @@ function Sala({ tienda, productos, vivoInicial, config, siguiendo, esMia, conSes
                 </ul>
               </section>
             )}
+            {/* Quien ganó una prenda sigue pudiendo pagarla aunque la feriante haya cortado. */}
+            {estado === "terminado" && vivo && (
+              <PagosTerminado
+                key={vivo.id}
+                vivoId={vivo.id}
+                userId={chat.userId}
+                iniciales={codigos.iniciales}
+                tienda={{ name: tienda.name, zone: tienda.zone }}
+                entregas={entregas}
+              />
+            )}
             {estado === "terminado" && (
               <Link
                 href={linkTienda}
@@ -134,8 +152,9 @@ function Sala({ tienda, productos, vivoInicial, config, siguiendo, esMia, conSes
 
       {/* El chat vive mientras el vivo está abierto; al terminar se va con el resto de la sala en vivo. */}
       {abierto && vivo && (
-        <ChatSala
+        <CodigosSala
           key={vivo.id}
+          codigos={{ ...codigos, entregas, tienda: { name: tienda.name, zone: tienda.zone } }}
           vivo={{ id: vivo.id, storeId: tienda.id }}
           inicial={chat.mensajes}
           silencioInicial={chat.silencio}

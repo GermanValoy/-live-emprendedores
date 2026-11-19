@@ -5,6 +5,9 @@
  *
  * El silencio automático al salir de la pantalla lo arma la pantalla con `vigilarSalida`
  * (privacidad.ts) llamando a `silenciar(true)`.
+ *
+ * La voz del estudio lee la pista del micrófono con `pistaDeAudio()` y se entera con
+ * `alCambiarAudio` cuando se renueva. Solo la lee: nunca la para, la pausa ni la silencia.
  */
 import { toast } from "sonner";
 import { silenciarAudio } from "./privacidad";
@@ -20,6 +23,10 @@ export type Transmisor = {
   cambiarCamara(): Promise<void>;
   volverATransmitir(): Promise<void>;
   detener(): void;
+  /** La pista del micrófono que se está transmitiendo (o null si no hay). Es solo para leerla. */
+  pistaDeAudio(): MediaStreamTrack | null;
+  /** Avisa cada vez que cambia la pista del micrófono. Devuelve la función para dejar de avisar. */
+  alCambiarAudio(fn: (pista: MediaStreamTrack | null) => void): () => void;
 };
 
 type Frente = "user" | "environment";
@@ -60,6 +67,13 @@ export async function crearTransmisor(
   let frente: Frente = "user";
   let escuchas = new AbortController();
   let bloqueo: WakeLockSentinel | null = null;
+  const avisosAudio = new Set<(pista: MediaStreamTrack | null) => void>();
+
+  const pistaActualDeAudio = () => camara?.getAudioTracks()[0] ?? null;
+  const avisarAudio = () => {
+    const pista = pistaActualDeAudio();
+    for (const fn of avisosAudio) fn(pista);
+  };
 
   const cambiarEstado = (e: EstadoTransmision) => { if (activo) alEstado(e); };
   const conectada = () => conexion?.pc.connectionState === "connected";
@@ -100,6 +114,7 @@ export async function crearTransmisor(
       if (vieja) { camara.removeTrack(vieja); vieja.stop(); }
       camara.addTrack(nueva);
       escucharPistas(camara);
+      if (tipo === "audio") avisarAudio();
       await emisorDe(tipo)?.replaceTrack(nueva);
       if (tipo === "video") ponerVideo(camara);
     } catch (error) {
@@ -143,6 +158,7 @@ export async function crearTransmisor(
     camaraCaida = false;
     escucharPistas(stream);
     ponerVideo(stream);
+    avisarAudio();
   }
 
   async function conectar() {
@@ -276,7 +292,16 @@ export async function crearTransmisor(
       video.srcObject = null;
       void bloqueo?.release().catch(() => undefined);
       bloqueo = null;
+      avisarAudio();
+      avisosAudio.clear();
       alEstado("detenido");
+    },
+
+    pistaDeAudio: pistaActualDeAudio,
+
+    alCambiarAudio(fn) {
+      avisosAudio.add(fn);
+      return () => { avisosAudio.delete(fn); };
     },
   };
 }

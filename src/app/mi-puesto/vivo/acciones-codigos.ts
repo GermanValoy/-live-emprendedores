@@ -2,6 +2,7 @@
 
 import { z } from "zod";
 import { obtenerUsuarioId } from "@/lib/auth/sesion";
+import { textoDeErrorDarPrenda } from "@/lib/codigos/errores-dar-prenda";
 import { normalizarCodigo } from "@/lib/codigos/reclamo";
 import { rutaEsDeTienda } from "@/lib/fotos/rutas";
 import { createClient } from "@/lib/supabase/server";
@@ -89,12 +90,7 @@ export async function darPrenda(
   const { data, error } = await supabase.rpc("dar_prenda", { p_codigo: codigoId, p_mensaje: mensajeId });
   if (error) {
     console.error("darPrenda", error.message);
-    const m = error.message ?? "";
-    if (m.includes("agotado")) return { ok: false, error: `Ya no quedan unidades de ${textos.etiqueta}.` };
-    if (m.includes("repetido")) return { ok: false, error: `${textos.nombre} ya tiene el ${textos.etiqueta}.` };
-    if (m.includes("no_disponible")) return { ok: false, error: "Ese código ya no se puede dar." };
-    if (m.includes("cerrado")) return { ok: false, error: "Este vivo ya terminó." };
-    return { ok: false, error: ERROR_GENERICO };
+    return { ok: false, error: textoDeErrorDarPrenda(error.message, textos) };
   }
   const nombre = typeof data === "string" && data ? data : textos.nombre;
   return { ok: true, texto: `Le diste el ${textos.etiqueta} a ${nombre}.` };

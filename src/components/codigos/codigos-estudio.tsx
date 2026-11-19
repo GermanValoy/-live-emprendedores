@@ -70,7 +70,8 @@ export function CodigosEstudio({ vivoId, storeId, videoRef, inicial, productos, 
     setVozVista(voz.borrador);
     const nuevo = voz.borrador;
     const repite = nuevo && panel && nuevo.precio === null && normalizarCodigo(panel.datos.palabra) === normalizarCodigo(nuevo.palabra);
-    if (nuevo && !repite) mostrar(nuevo);
+    // Con la hoja de "Darle una prenda" abierta no se abre otra encima: ese borrador se ignora.
+    if (nuevo && !repite && !darA) mostrar(nuevo);
   }
 
   function cerrar() {

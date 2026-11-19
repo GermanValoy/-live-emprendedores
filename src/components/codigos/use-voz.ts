@@ -23,13 +23,20 @@ const hayWebAudio = () => typeof AudioContext !== "undefined";
 
 /**
  * Lo que dijo la feriante → el cartel del código, o null si no hay nada para lanzar
- * (no nombró un código, o esa palabra ya se usó en este vivo).
+ * (no nombró un código, o repite el activo), o `{ repetida }` si dijo una palabra ya usada en este vivo.
  */
-export function armarBorrador(texto: string, foto: Blob | null, usadas: ReadonlySet<string>): Borrador | null {
+export function armarBorrador(
+  texto: string,
+  foto: Blob | null,
+  usadas: ReadonlySet<string>,
+  activa: string | null,
+): Borrador | { repetida: string } | null {
   const { precio, codigo } = entender(texto);
   if (!codigo) return null;
   const normal = normalizarCodigo(codigo);
-  if (!normal || usadas.has(normal)) return null;
+  if (!normal) return null;
+  // Si repite la palabra del código que está activo, es que lo está nombrando (no hay nada que avisar).
+  if (usadas.has(normal)) return normal === activa ? null : { repetida: codigo };
   return {
     foto,
     precio: precio === null ? null : Math.round(precio * 100),
@@ -49,6 +56,10 @@ type Opciones = {
   palabrasUsadas: ReadonlySet<string>;
   /** El interruptor de la feriante. */
   activa: boolean;
+  /** La palabra (normalizada) del código activo, si hay uno. */
+  palabraActiva: string | null;
+  /** Se llama cuando la feriante dice una palabra que ya usó en este vivo. */
+  alRepetida(palabra: string): void;
 };
 
 type Bloqueo = "limite" | "sin-servicio" | "sin-audio";
@@ -81,7 +92,7 @@ function armarGrafo(pista: MediaStreamTrack): Grafo {
  * Escucha una copia del micrófono de la transmisión y arma el cartel del código con cada frase.
  * Solo lee la pista con un AudioContext propio: la transmisión no se toca.
  */
-export function useVoz({ transmisor, video, vivoId, config, palabrasUsadas, activa }: Opciones): {
+export function useVoz({ transmisor, video, vivoId, config, palabrasUsadas, activa, palabraActiva, alRepetida }: Opciones): {
   estado: EstadoVoz;
   aviso: string | null;
   borrador: Borrador | null;
@@ -100,6 +111,10 @@ export function useVoz({ transmisor, video, vivoId, config, palabrasUsadas, acti
   const [borrador, setBorrador] = useState<Borrador | null>(null);
   const usadas = useRef(palabrasUsadas);
   useEffect(() => { usadas.current = palabrasUsadas; }, [palabrasUsadas]);
+  const activaRef = useRef(palabraActiva);
+  useEffect(() => { activaRef.current = palabraActiva; }, [palabraActiva]);
+  const repetidaRef = useRef(alRepetida);
+  useEffect(() => { repetidaRef.current = alRepetida; }, [alRepetida]);
 
   const escuchar = activa && soportada && pista !== null && bloqueo === null;
   const { umbralMinimo, previoMs, silencioFinMs, maximoMs, solapeMs, minimoVozMs } = config;
@@ -151,8 +166,10 @@ export function useVoz({ transmisor, video, vivoId, config, palabrasUsadas, acti
       const { texto } = (await respuesta.json().catch(() => ({}))) as { texto?: string };
       errores = 0;
       if (!texto || !prendida) return;
-      const nuevo = armarBorrador(texto, await foto, usadas.current);
-      if (nuevo && prendida) setBorrador(nuevo);
+      const nuevo = armarBorrador(texto, await foto, usadas.current, activaRef.current);
+      if (!nuevo || !prendida) return;
+      if ("repetida" in nuevo) repetidaRef.current(nuevo.repetida);
+      else setBorrador(nuevo);
     }
 
     // La foto se saca cuando empieza la frase (ahí está mostrando la prenda) y queda en memoria.

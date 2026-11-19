@@ -1,6 +1,7 @@
 "use client";
 
 import { type RefObject, useMemo, useRef, useState } from "react";
+import { toast } from "sonner";
 import { lanzarCodigo } from "@/app/mi-puesto/vivo/acciones-codigos";
 import { fotoDelVideo } from "@/lib/codigos/foto-video";
 import { normalizarCodigo } from "@/lib/codigos/reclamo";
@@ -47,7 +48,18 @@ export function CodigosEstudio({ vivoId, storeId, videoRef, inicial, productos, 
   const { pedidos } = usePedidosPuesto(storeId, vivoId);
   const porRevisar = pedidos.filter((p) => p.status === "pago_informado").length;
   const palabrasUsadas = useMemo(() => new Set(codigos.map((c) => normalizarCodigo(c.word))), [codigos]);
-  const voz = useVoz({ transmisor, video: videoRef, vivoId, config: configVoz, palabrasUsadas, activa: vozActiva });
+  const palabraActiva = activo ? normalizarCodigo(activo.word) : null;
+  const voz = useVoz({
+    transmisor,
+    video: videoRef,
+    vivoId,
+    config: configVoz,
+    palabrasUsadas,
+    activa: vozActiva,
+    palabraActiva,
+    alRepetida: (p) =>
+      toast(`${p.toUpperCase()} ya lo usaste en este vivo. Decí otra palabra.`, { id: `voz-repetida-${normalizarCodigo(p)}` }),
+  });
 
   const mostrar = (datos: Borrador) => setPanel((p) => ({ datos, id: (p?.id ?? 0) + 1 }));
 

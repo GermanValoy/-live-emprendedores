@@ -36,6 +36,7 @@ describe("armarBorrador", () => {
 
   it("si nombra el código activo con otro precio, es otra prenda: avisa que la palabra ya se usó", () => {
     expect(armarBorrador("doce mil, código rojo", foto, new Set(["rojo"]), ROJO_ACTIVO)).toEqual({ repetida: "ROJO" });
+    expect(armarBorrador("código rojo, doce mil", foto, new Set(["rojo"]), ROJO_ACTIVO)).toEqual({ repetida: "ROJO" });
   });
 
   it("si nombra el código activo con el mismo precio, es un recordatorio: no avisa", () => {

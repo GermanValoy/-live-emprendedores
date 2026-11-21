@@ -65,7 +65,20 @@ export function entender(texto: string): Entendido {
     const resto = tokens.slice(pos + 1).map((t) => t.replace(/[.,]+$/, "")).filter((t) => !RELLENO.has(t));
     if (resto[0]) codigo = resto[0].toUpperCase();
   }
+  const limpiar = (t: string) => t.replace(/[.,]+$/, "");
   const antes = pos >= 0 ? tokens.slice(0, pos) : tokens;
-  const precio = precioEn(antes.map((t) => t.replace(/[.,]+$/, ""))) ?? null;
+  // El precio de antes del código manda ("ocho mil, código rojo"); si no hay, se busca después
+  // ("código rojo, ocho mil"), pero solo uno que suene a precio, para no confundir "talle 2" o "quedan 3".
+  const precio = precioEn(antes.map(limpiar)) ?? (pos >= 0 ? precioDespues(tokens.slice(pos + 2).map(limpiar)) : null);
   return { precio, codigo };
+}
+
+/** Lo que va de "mil" para arriba, o con "$" o "pesos", es un precio; lo demás después del código no. */
+const PRECIO_MINIMO_SIN_SIGNO = 1000;
+
+function precioDespues(tokens: string[]): number | null {
+  const precio = precioEn(tokens);
+  if (precio === null) return null;
+  const conSigno = tokens.some((t) => t.startsWith("$") || t === "pesos");
+  return precio >= PRECIO_MINIMO_SIN_SIGNO || conSigno ? precio : null;
 }

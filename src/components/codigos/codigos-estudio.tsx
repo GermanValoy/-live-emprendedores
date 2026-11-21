@@ -1,7 +1,6 @@
 "use client";
 
-import { type RefObject, useMemo, useRef, useState } from "react";
-import { toast } from "sonner";
+import { type RefObject, useEffect, useMemo, useRef, useState } from "react";
 import { lanzarCodigo } from "@/app/mi-puesto/vivo/acciones-codigos";
 import { fotoDelVideo } from "@/lib/codigos/foto-video";
 import { normalizarCodigo } from "@/lib/codigos/reclamo";
@@ -34,6 +33,9 @@ type Props = {
   alTerminarDarA(): void;
 };
 
+/** Cuánto queda en pantalla el aviso de "ya lo usaste". */
+const AVISO_REPETIDA_MS = 4500;
+
 /** El cartel abierto. `id` cambia con cada cartel nuevo, así uno nuevo reemplaza al anterior. */
 type Panel = { datos: Borrador; id: number };
 
@@ -48,6 +50,8 @@ export function CodigosEstudio({ vivoId, storeId, videoRef, inicial, productos, 
   const { pedidos } = usePedidosPuesto(storeId, vivoId);
   const porRevisar = pedidos.filter((p) => p.status === "pago_informado").length;
   const palabrasUsadas = useMemo(() => new Set(codigos.map((c) => normalizarCodigo(c.word))), [codigos]);
+  // El aviso de palabra ya usada va en el medio de la pantalla (arriba se pierde mientras vende) y se va solo.
+  const [repetida, setRepetida] = useState<{ palabra: string; vez: number } | null>(null);
   const palabraActiva = activo ? normalizarCodigo(activo.word) : null;
   const voz = useVoz({
     transmisor,
@@ -57,9 +61,14 @@ export function CodigosEstudio({ vivoId, storeId, videoRef, inicial, productos, 
     palabrasUsadas,
     activa: vozActiva,
     palabraActiva,
-    alRepetida: (p) =>
-      toast(`${p.toUpperCase()} ya lo usaste en este vivo. Decí otra palabra.`, { id: `voz-repetida-${normalizarCodigo(p)}` }),
+    alRepetida: (p) => setRepetida((r) => ({ palabra: p.toUpperCase(), vez: (r?.vez ?? 0) + 1 })),
   });
+
+  useEffect(() => {
+    if (!repetida) return;
+    const t = setTimeout(() => setRepetida(null), AVISO_REPETIDA_MS);
+    return () => clearTimeout(t);
+  }, [repetida]);
 
   const mostrar = (datos: Borrador) => setPanel((p) => ({ datos, id: (p?.id ?? 0) + 1 }));
 
@@ -161,6 +170,19 @@ export function CodigosEstudio({ vivoId, storeId, videoRef, inicial, productos, 
               Cerrar
             </button>
           </div>
+        </div>
+      )}
+      {repetida && (
+        <div className="pointer-events-none absolute inset-x-6 top-1/2 z-20 flex -translate-y-1/2 justify-center">
+          <p
+            key={repetida.vez}
+            role="alert"
+            className="max-w-sm rounded-3xl bg-white px-6 py-5 text-center text-foreground shadow-2xl motion-safe:animate-in motion-safe:zoom-in-95 motion-safe:fade-in motion-safe:duration-(--duracion-base)"
+          >
+            <b className="block text-3xl font-extrabold tracking-wide text-primary">{repetida.palabra}</b>
+            <span className="mt-1 block text-lg font-bold text-pretty">ya lo usaste en este vivo.</span>
+            <span className="block text-base font-semibold text-muted-foreground">Decí otra palabra.</span>
+          </p>
         </div>
       )}
       {darA && <PanelDarPrenda destinataria={darA} codigos={codigos} alCerrar={alTerminarDarA} />}

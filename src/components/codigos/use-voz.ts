@@ -21,25 +21,33 @@ const reloj = () => performance.now();
 const sinSuscripcion = () => () => undefined;
 const hayWebAudio = () => typeof AudioContext !== "undefined";
 
+/** El código que está en pantalla, para distinguir un recordatorio de una prenda nueva. */
+export type CodigoActivoVoz = { palabra: string; precioCentavos: number };
+
 /**
  * Lo que dijo la feriante → el cartel del código, o null si no hay nada para lanzar
- * (no nombró un código, o repite el activo), o `{ repetida }` si dijo una palabra ya usada en este vivo.
+ * (no nombró un código, o recuerda el activo sin precio o con su mismo precio), o `{ repetida }` si dijo una
+ * palabra ya usada en este vivo (uno viejo, o el activo con otro precio: eso es otra prenda).
  */
 export function armarBorrador(
   texto: string,
   foto: Blob | null,
   usadas: ReadonlySet<string>,
-  activa: string | null,
+  activa: CodigoActivoVoz | null,
 ): Borrador | { repetida: string } | null {
   const { precio, codigo } = entender(texto);
   if (!codigo) return null;
   const normal = normalizarCodigo(codigo);
   if (!normal) return null;
-  // Si repite la palabra del código que está activo, es que lo está nombrando (no hay nada que avisar).
-  if (usadas.has(normal)) return normal === activa ? null : { repetida: codigo };
+  const centavos = precio === null ? null : Math.round(precio * 100);
+  if (usadas.has(normal)) {
+    // Nombrar el código activo sin precio o con su mismo precio es recordarlo ("¡acuérdense, código ROJO!").
+    const recuerda = normal === activa?.palabra && (centavos === null || centavos === activa.precioCentavos);
+    return recuerda ? null : { repetida: codigo };
+  }
   return {
     foto,
-    precio: precio === null ? null : Math.round(precio * 100),
+    precio: centavos,
     palabra: codigo,
     cantidad: 1,
     productoId: null,
@@ -56,8 +64,8 @@ type Opciones = {
   palabrasUsadas: ReadonlySet<string>;
   /** El interruptor de la feriante. */
   activa: boolean;
-  /** La palabra (normalizada) del código activo, si hay uno. */
-  palabraActiva: string | null;
+  /** El código activo (palabra normalizada y precio), si hay uno. */
+  codigoActivo: CodigoActivoVoz | null;
   /** Se llama cuando la feriante dice una palabra que ya usó en este vivo. */
   alRepetida(palabra: string): void;
 };
@@ -92,7 +100,7 @@ function armarGrafo(pista: MediaStreamTrack): Grafo {
  * Escucha una copia del micrófono de la transmisión y arma el cartel del código con cada frase.
  * Solo lee la pista con un AudioContext propio: la transmisión no se toca.
  */
-export function useVoz({ transmisor, video, vivoId, config, palabrasUsadas, activa, palabraActiva, alRepetida }: Opciones): {
+export function useVoz({ transmisor, video, vivoId, config, palabrasUsadas, activa, codigoActivo, alRepetida }: Opciones): {
   estado: EstadoVoz;
   aviso: string | null;
   borrador: Borrador | null;
@@ -111,8 +119,8 @@ export function useVoz({ transmisor, video, vivoId, config, palabrasUsadas, acti
   const [borrador, setBorrador] = useState<Borrador | null>(null);
   const usadas = useRef(palabrasUsadas);
   useEffect(() => { usadas.current = palabrasUsadas; }, [palabrasUsadas]);
-  const activaRef = useRef(palabraActiva);
-  useEffect(() => { activaRef.current = palabraActiva; }, [palabraActiva]);
+  const activaRef = useRef(codigoActivo);
+  useEffect(() => { activaRef.current = codigoActivo; }, [codigoActivo]);
   const repetidaRef = useRef(alRepetida);
   useEffect(() => { repetidaRef.current = alRepetida; }, [alRepetida]);
 

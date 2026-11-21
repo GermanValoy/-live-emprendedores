@@ -52,7 +52,10 @@ export function CodigosEstudio({ vivoId, storeId, videoRef, inicial, productos, 
   const palabrasUsadas = useMemo(() => new Set(codigos.map((c) => normalizarCodigo(c.word))), [codigos]);
   // El aviso de palabra ya usada va en el medio de la pantalla (arriba se pierde mientras vende) y se va solo.
   const [repetida, setRepetida] = useState<{ palabra: string; vez: number } | null>(null);
-  const palabraActiva = activo ? normalizarCodigo(activo.word) : null;
+  const codigoActivo = useMemo(
+    () => (activo ? { palabra: normalizarCodigo(activo.word), precioCentavos: activo.price_cents } : null),
+    [activo],
+  );
   const voz = useVoz({
     transmisor,
     video: videoRef,
@@ -60,7 +63,7 @@ export function CodigosEstudio({ vivoId, storeId, videoRef, inicial, productos, 
     config: configVoz,
     palabrasUsadas,
     activa: vozActiva,
-    palabraActiva,
+    codigoActivo,
     alRepetida: (p) => setRepetida((r) => ({ palabra: p.toUpperCase(), vez: (r?.vez ?? 0) + 1 })),
   });
 

@@ -18,21 +18,38 @@ const ERRORES_PARA_CORTAR = 3;
 
 // Fuera del componente: las reglas de React no dejan leer el reloj mientras se dibuja.
 const reloj = () => performance.now();
+/** Cuánto queda a la vista lo último que entendió la voz. */
+const ESCUCHE_MS = 6000;
 const sinSuscripcion = () => () => undefined;
 const hayWebAudio = () => typeof AudioContext !== "undefined";
 
+/** El código que está en pantalla, para distinguir un recordatorio de una prenda nueva. */
+export type CodigoActivoVoz = { palabra: string; precioCentavos: number };
+
 /**
  * Lo que dijo la feriante → el cartel del código, o null si no hay nada para lanzar
- * (no nombró un código, o esa palabra ya se usó en este vivo).
+ * (no nombró un código, o recuerda el activo sin precio o con su mismo precio), o `{ repetida }` si dijo una
+ * palabra ya usada en este vivo (uno viejo, o el activo con otro precio: eso es otra prenda).
  */
-export function armarBorrador(texto: string, foto: Blob | null, usadas: ReadonlySet<string>): Borrador | null {
+export function armarBorrador(
+  texto: string,
+  foto: Blob | null,
+  usadas: ReadonlySet<string>,
+  activa: CodigoActivoVoz | null,
+): Borrador | { repetida: string } | null {
   const { precio, codigo } = entender(texto);
   if (!codigo) return null;
   const normal = normalizarCodigo(codigo);
-  if (!normal || usadas.has(normal)) return null;
+  if (!normal) return null;
+  const centavos = precio === null ? null : Math.round(precio * 100);
+  if (usadas.has(normal)) {
+    // Nombrar el código activo sin precio o con su mismo precio es recordarlo ("¡acuérdense, código ROJO!").
+    const recuerda = normal === activa?.palabra && (centavos === null || centavos === activa.precioCentavos);
+    return recuerda ? null : { repetida: codigo };
+  }
   return {
     foto,
-    precio: precio === null ? null : Math.round(precio * 100),
+    precio: centavos,
     palabra: codigo,
     cantidad: 1,
     productoId: null,
@@ -49,6 +66,10 @@ type Opciones = {
   palabrasUsadas: ReadonlySet<string>;
   /** El interruptor de la feriante. */
   activa: boolean;
+  /** El código activo (palabra normalizada y precio), si hay uno. */
+  codigoActivo: CodigoActivoVoz | null;
+  /** Se llama cuando la feriante dice una palabra que ya usó en este vivo. */
+  alRepetida(palabra: string): void;
 };
 
 type Bloqueo = "limite" | "sin-servicio" | "sin-audio";
@@ -81,9 +102,11 @@ function armarGrafo(pista: MediaStreamTrack): Grafo {
  * Escucha una copia del micrófono de la transmisión y arma el cartel del código con cada frase.
  * Solo lee la pista con un AudioContext propio: la transmisión no se toca.
  */
-export function useVoz({ transmisor, video, vivoId, config, palabrasUsadas, activa }: Opciones): {
+export function useVoz({ transmisor, video, vivoId, config, palabrasUsadas, activa, codigoActivo, alRepetida }: Opciones): {
   estado: EstadoVoz;
   aviso: string | null;
+  /** Lo último que entendió la voz, para que la feriante sepa si la escuchó (se borra solo). */
+  escuche: string | null;
   borrador: Borrador | null;
   descartar(): void;
   /** Saca el bloqueo (límite o sin servicio) para volver a probar al prenderla de nuevo. */
@@ -98,8 +121,18 @@ export function useVoz({ transmisor, video, vivoId, config, palabrasUsadas, acti
   const [bloqueo, setBloqueo] = useState<Bloqueo | null>(null);
   const [escuchando, setEscuchando] = useState(false);
   const [borrador, setBorrador] = useState<Borrador | null>(null);
+  const [escuche, setEscuche] = useState<{ texto: string; vez: number } | null>(null);
+  useEffect(() => {
+    if (!escuche) return;
+    const t = setTimeout(() => setEscuche(null), ESCUCHE_MS);
+    return () => clearTimeout(t);
+  }, [escuche]);
   const usadas = useRef(palabrasUsadas);
   useEffect(() => { usadas.current = palabrasUsadas; }, [palabrasUsadas]);
+  const activaRef = useRef(codigoActivo);
+  useEffect(() => { activaRef.current = codigoActivo; }, [codigoActivo]);
+  const repetidaRef = useRef(alRepetida);
+  useEffect(() => { repetidaRef.current = alRepetida; }, [alRepetida]);
 
   const escuchar = activa && soportada && pista !== null && bloqueo === null;
   const { umbralMinimo, previoMs, silencioFinMs, maximoMs, solapeMs, minimoVozMs } = config;
@@ -151,8 +184,11 @@ export function useVoz({ transmisor, video, vivoId, config, palabrasUsadas, acti
       const { texto } = (await respuesta.json().catch(() => ({}))) as { texto?: string };
       errores = 0;
       if (!texto || !prendida) return;
-      const nuevo = armarBorrador(texto, await foto, usadas.current);
-      if (nuevo && prendida) setBorrador(nuevo);
+      setEscuche((e) => ({ texto: texto.trim(), vez: (e?.vez ?? 0) + 1 }));
+      const nuevo = armarBorrador(texto, await foto, usadas.current, activaRef.current);
+      if (!nuevo || !prendida) return;
+      if ("repetida" in nuevo) repetidaRef.current(nuevo.repetida);
+      else setBorrador(nuevo);
     }
 
     // La foto se saca cuando empieza la frase (ahí está mostrando la prenda) y queda en memoria.
@@ -205,6 +241,7 @@ export function useVoz({ transmisor, video, vivoId, config, palabrasUsadas, acti
   return {
     estado,
     aviso,
+    escuche: estado === "apagada" ? null : (escuche?.texto ?? null),
     borrador,
     descartar: useCallback(() => setBorrador(null), []),
     reintentar: useCallback(() => setBloqueo(null), []),

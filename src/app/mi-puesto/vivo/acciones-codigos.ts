@@ -2,6 +2,7 @@
 
 import { z } from "zod";
 import { obtenerUsuarioId } from "@/lib/auth/sesion";
+import { textoDeErrorDarPrenda } from "@/lib/codigos/errores-dar-prenda";
 import { normalizarCodigo } from "@/lib/codigos/reclamo";
 import { rutaEsDeTienda } from "@/lib/fotos/rutas";
 import { createClient } from "@/lib/supabase/server";
@@ -77,3 +78,20 @@ async function llamar(funcion: "cerrar_codigo" | "anular_codigo" | "anular_recla
 export const cerrarCodigo = async (codigoId: string) => llamar("cerrar_codigo", "p_codigo", codigoId);
 export const anularCodigo = async (codigoId: string) => llamar("anular_codigo", "p_codigo", codigoId);
 export const anularReclamo = async (reclamoId: string) => llamar("anular_reclamo", "p_reclamo", reclamoId);
+
+/** Le da una prenda sin vender de un código que ya pasó a quien preguntó por ella en el chat. */
+export async function darPrenda(
+  codigoId: string,
+  mensajeId: string,
+  textos: { nombre: string; etiqueta: string },
+): Promise<Resultado & { texto?: string }> {
+  if (!uuid.safeParse(codigoId).success || !uuid.safeParse(mensajeId).success) return { ok: false, error: ERROR_GENERICO };
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("dar_prenda", { p_codigo: codigoId, p_mensaje: mensajeId });
+  if (error) {
+    console.error("darPrenda", error.message);
+    return { ok: false, error: textoDeErrorDarPrenda(error.message, textos) };
+  }
+  const nombre = typeof data === "string" && data ? data : textos.nombre;
+  return { ok: true, texto: `Le diste el ${textos.etiqueta} a ${nombre}.` };
+}

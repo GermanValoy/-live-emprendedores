@@ -110,13 +110,15 @@ Programar los pagos como un **módulo intercambiable** (`lib/payments/` con una 
 
 ## 8. Modelo de datos inicial
 
-**Ya creadas** (migraciones en `drizzle/`, hasta la 0026):
+**Ya creadas** (migraciones en `drizzle/`, hasta la 0028):
 - Fase 0: `users` (perfil público; se crea solo al registrarse).
 - Fase 1, Parte 1: `platform_admins` (administradores de la plataforma; el primero se carga a mano por SQL, sin escribir el email en el código), `invitations`, `stores` (con `handle` = @usuario y `onboarding_step` del recorrido de 4 pasos), `store_private_info` (alias, titular, dirección y horarios de retiro: **solo la dueña**), `store_delivery_options` (retiro en domicilio, envío gratis/fijo/a coordinar, punto de encuentro), `products`, `product_photos` (hasta 4 por producto), `follows`.
 - Fase 1, Parte 2: `live_sessions` (cada vivo, con su inicio y su fin), `store_streams` (la transmisión de cada tienda en Cloudflare, con la URL para transmitir (WHIP), que es una credencial: **solo la lee el servidor**) y `live_config` (los tiempos de la sala: 300 s sin conexión, 900 s fuera de pantalla y señal de vida cada 20 s; se cambian con un `UPDATE` en `live_config`, nunca en el código).
 - Fase 1, Parte 3: `chat_messages` (cada mensaje de la sala, con el nombre corto de quien lo escribió, si es de la feriante y si el moderador lo ocultó o alguien lo borró), `chat_silences` (personas silenciadas: por el moderador automático, por la feriante en su puesto o por la plataforma), `moderation_actions` (registro de cada cosa que se moderó: quién, a quién, qué mensaje), `chat_config` (los números del chat: 200 caracteres, 5 mensajes en 10 s, 3 frenados en 10 min silencian 10 min, 50 mensajes al entrar y 30 días de guardado; se cambian con un `UPDATE` en `chat_config`, nunca en el código) y `chat_blocked_words` (la lista de palabras del moderador; se amplía con un `INSERT`). `chat_config` y `chat_blocked_words` no se pueden leer desde el navegador, solo desde el servidor.
 
 - Fase 1, Parte 4: `code_config` (los números del código en vivo y de la voz: plazo de 15 minutos para pagar, cartel de la ganadora de 18 s, lista de espera de 5, si se aceptan códigos "casi" bien escritos, y los ajustes de la voz con su tope de 3 horas por día; se cambian con un `UPDATE` en `code_config`, nunca en el código; solo el servidor la lee), `live_codes` (cada código lanzado en un vivo: palabra, precio, foto, stock y estado), `claims` (cada reclamo: ganadora, en espera, anulada o caducada), `orders` (un pedido por prenda ganada, con su estado `por_pagar`, `pago_informado`, `en_revision`, `pagado`, `vencido` o `anulado`, y una **copia del alias** con el que se ganó), `payment_reports` (el "Ya pagué" con su comprobante; el WhatsApp de la compradora está en `orders.buyer_whatsapp`), `voice_usage` (cuánta voz se usó por día), `chat_silenced_attempts` (reclamos de personas silenciadas, para limitarles la ráfaga) y la columna `stores.payment_minutes` (el plazo de pago propio de cada feriante). Las funciones de la base (`lanzar_codigo`, `cerrar_codigo`, `anular_codigo`, `reclamar_codigo`, las de pedidos y `sumar_voz`) hacen el trabajo atómico; `vencer_pedidos` corre sola **cada minuto** (cron) y pasa la prenda a la siguiente de la lista. Comprobantes en el bucket **privado** `comprobantes`. Un pedido es una prenda de un código (pago por prenda): **no hay `order_items`** (llegan con el carrito del vivo, Fase 2). Una **falta** no tiene tabla: se deriva (pedido `vencido`, o `anulado` por "Ofrecer a otra").
+
+- Darle una prenda (rama `fase-1-dar-una-prenda`): la función `dar_prenda` (la feriante le da una prenda a una compradora sin esperar un código) y la columna `orders.given_by_owner` (migraciones 0027 y 0028_seguridad_dar_prenda).
 
 **Planeadas**: `store_members` (ayudantes, Fase 2), `buyer_reputation` (Fase 2), `reports` (plataforma).
 
@@ -141,7 +143,7 @@ Programar los pagos como un **módulo intercambiable** (`lib/payments/` con una 
 
 **Estado (2026-11-05)**: Fase 0 publicada · Fase 1: Parte 0 (pantallas), Parte 1 (tiendas y productos), Parte 2 (sala en vivo) y **Parte 3 (chat)** publicadas en `tuferialive.vercel.app` (la Parte 2, probada en celulares reales Android e iPhone el 2026-10-29; la Parte 3, el 2026-11-05). Arreglados después: el Inicio ya no muestra "EN VIVO" mientras el vivo espera que vuelva la feriante, y la dueña no puede seguir su propio puesto.
 
-**Estado (2026-11-06)**: la **Parte 4 (código en vivo y pagos) está construida** en la rama `fase-1-parte-4-codigo-y-pagos`, con todas las pruebas automáticas pasando, pero **todavía no está publicada**: falta cargar `CLOUDFLARE_AI_API_TOKEN` en Vercel (Production) y probarla en celulares reales Android e iPhone (voz con la prenda en las manos, reclamos desde varios celulares y una transferencia real de prueba). Lo siguiente: Parte 5 (preparación del piloto).
+**Estado (2026-11-19)**: la **Parte 4 (código en vivo y pagos)** se unió a `main` y está **publicada** (PR #8), después de probarla el dueño en celulares reales Android e iPhone. La función **"Darle una prenda"** (la feriante le da una prenda a quien preguntó en el chat, sin esperar un código) está construida en la rama `fase-1-dar-una-prenda`, **todavía sin publicar**: la función de la base `dar_prenda` y la columna `orders.given_by_owner` (migraciones 0027 y 0028_seguridad_dar_prenda), el panel `src/components/codigos/panel-dar-prenda.tsx`, la lógica `src/lib/codigos/prendas.ts`, la acción `darPrenda` en `src/app/mi-puesto/vivo/acciones-codigos.ts` y el aviso por voz cuando la feriante repite una palabra ya usada. Lo siguiente: Parte 5 (preparación del piloto).
 
 **Fase 0 – Bases**: proyecto Next.js + Supabase + Drizzle, sistema de diseño (colores, tipografía, componentes base), login, estructura de carpetas, CI con tests, deploy en Vercel.
 
@@ -179,9 +181,7 @@ Programar los pagos como un **módulo intercambiable** (`lib/payments/` con una 
 
 - Balance de ventas del vivo (total vendido, por compradora): va a la Fase 2 (panel de ventas); hoy la feriante ve los pedidos por vivo en Pedidos.
 - Códigos "casi acertados" (ej. "rojoo"): hoy están apagados (`aceptar_casi` en `code_config`); definir con las feriantes si conviene prenderlos.
-- Cargar `CLOUDFLARE_AI_API_TOKEN` en Vercel para **Production** (sin eso la voz no responde y queda el botón + Nuevo código).
-- Probar la voz en iPhone (en Android anduvo; el iPhone puede comportarse distinto con el micrófono).
-- "Ofrecer a otra" es de un toque y sin confirmación (anota una falta a la compradora y está al lado de "Confirmar pago"): decidir con el dueño si pide confirmación.
+- Si otro celular abre el vivo con la misma cuenta, se queda con la transmisión sin preguntar, y el primero tardó ~30 s en enterarse: pedir confirmación ("Ya estás en vivo desde otro celular. ¿Pasar el vivo a este?") y revisar el aviso instantáneo.
 - Un silencio puesto por la plataforma igual deja reclamar códigos: confirmar si debe impedirlo.
 - El Inicio se recarga con cada cambio de códigos de toda la plataforma (optimizar cuando haya muchos vivos).
 - `chat_silenced_attempts` no tiene limpieza periódica (sumarla a la que borra el chat viejo).
@@ -215,7 +215,7 @@ Next.js es "todo en uno": cada pantalla y las acciones del servidor que usa vive
 | Carpeta | Qué hay | Rol |
 |---|---|---|
 | `src/app/` | Una carpeta por dirección de la app. Adentro: `page.tsx` (la pantalla) y, si guarda datos, `acciones.ts` (Server Actions: el "backend" de esa pantalla) | Pantallas + servidor |
-| `src/components/` | Piezas visuales reutilizables, agrupadas por tema: `ui/` (shadcn), `marca/`, `navegacion/`, `fotos/`, `tiendas/`, `vivos/`, `chat/` (burbujas, chat de la sala y del estudio, panel para moderar), `codigos/` (crear y lanzar códigos, cartel y panel de pago, pedidos de la feriante, Mis compras) | Interfaz |
+| `src/components/` | Piezas visuales reutilizables, agrupadas por tema: `ui/` (shadcn), `marca/`, `navegacion/`, `fotos/`, `tiendas/`, `vivos/`, `chat/` (burbujas, chat de la sala y del estudio, panel para moderar), `codigos/` (crear y lanzar códigos, cartel y panel de pago, pedidos de la feriante, Mis compras, `panel-dar-prenda`: darle una prenda a quien preguntó por el chat) | Interfaz |
 | `src/lib/` | Lógica sin pantalla, por tema: `tiendas/` (validaciones, entregas, lecturas de datos, tipos), `vivos/` (Cloudflare Stream, transmitir y mirar con WebRTC, presencia, señal de vida, privacidad, reconexión y lecturas de datos), `chat/` (moderador, nombre corto, configuración y lecturas del chat), `fotos/` (compresión, subida, rutas), `format/` (plata y fechas), `auth/`, `supabase/` (conexiones), `codigos/` (reclamos, tipos, textos y lecturas de códigos y pedidos), `payments/` (módulo intercambiable de pagos: interfaz común y modo alias), `voz/` (detector de voz del micrófono, WAV y armado del código a partir de lo que se dijo), `red.ts` (errores de conexión) | Reglas del negocio |
 | `src/db/schema.ts` | Descripción de las tablas (Drizzle) | Base de datos |
 | `drizzle/` | Migraciones numeradas: las `seguridad_*.sql` tienen los permisos (RLS), funciones y reglas de Storage | Base de datos |

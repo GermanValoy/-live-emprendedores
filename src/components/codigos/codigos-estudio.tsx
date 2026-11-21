@@ -1,6 +1,6 @@
 "use client";
 
-import { type RefObject, useMemo, useRef, useState } from "react";
+import { type RefObject, useEffect, useMemo, useRef, useState } from "react";
 import { lanzarCodigo } from "@/app/mi-puesto/vivo/acciones-codigos";
 import { fotoDelVideo } from "@/lib/codigos/foto-video";
 import { normalizarCodigo } from "@/lib/codigos/reclamo";
@@ -9,6 +9,7 @@ import { ErrorDeFoto } from "@/lib/fotos/comprimir";
 import { subirFoto } from "@/lib/fotos/subir";
 import type { Transmisor } from "@/lib/vivos/transmisor";
 import type { ConfigDetector } from "@/lib/voz/detector";
+import { PanelDarPrenda, type Destinataria } from "./panel-dar-prenda";
 import { CodigoActivo } from "./codigo-activo";
 import { IndicadorVoz } from "./indicador-voz";
 import { PedidosVivo } from "./pedidos-vivo";
@@ -27,13 +28,19 @@ type Props = {
   transmisor: Transmisor | null;
   /** Los números del detector de voz (de `code_config`). */
   configVoz: ConfigDetector;
+  /** A quién se le está dando una prenda (la feriante tocó su mensaje), o null. */
+  darA: Destinataria | null;
+  alTerminarDarA(): void;
 };
+
+/** Cuánto queda en pantalla el aviso de "ya lo usaste". */
+const AVISO_REPETIDA_MS = 4500;
 
 /** El cartel abierto. `id` cambia con cada cartel nuevo, así uno nuevo reemplaza al anterior. */
 type Panel = { datos: Borrador; id: number };
 
 /** Lo de los códigos en el estudio: el botón para crear uno, el cartel para lanzarlo y la barra del código activo. */
-export function CodigosEstudio({ vivoId, storeId, videoRef, inicial, productos, transmisor, configVoz }: Props) {
+export function CodigosEstudio({ vivoId, storeId, videoRef, inicial, productos, transmisor, configVoz, darA, alTerminarDarA }: Props) {
   const { activo, codigos, releer } = useCodigosVivo(vivoId, inicial);
   const [panel, setPanel] = useState<Panel | null>(null);
   const [revisando, setRevisando] = useState(false);
@@ -43,7 +50,28 @@ export function CodigosEstudio({ vivoId, storeId, videoRef, inicial, productos, 
   const { pedidos } = usePedidosPuesto(storeId, vivoId);
   const porRevisar = pedidos.filter((p) => p.status === "pago_informado").length;
   const palabrasUsadas = useMemo(() => new Set(codigos.map((c) => normalizarCodigo(c.word))), [codigos]);
-  const voz = useVoz({ transmisor, video: videoRef, vivoId, config: configVoz, palabrasUsadas, activa: vozActiva });
+  // El aviso de palabra ya usada va en el medio de la pantalla (arriba se pierde mientras vende) y se va solo.
+  const [repetida, setRepetida] = useState<{ palabra: string; vez: number } | null>(null);
+  const codigoActivo = useMemo(
+    () => (activo ? { palabra: normalizarCodigo(activo.word), precioCentavos: activo.price_cents } : null),
+    [activo],
+  );
+  const voz = useVoz({
+    transmisor,
+    video: videoRef,
+    vivoId,
+    config: configVoz,
+    palabrasUsadas,
+    activa: vozActiva,
+    codigoActivo,
+    alRepetida: (p) => setRepetida((r) => ({ palabra: p.toUpperCase(), vez: (r?.vez ?? 0) + 1 })),
+  });
+
+  useEffect(() => {
+    if (!repetida) return;
+    const t = setTimeout(() => setRepetida(null), AVISO_REPETIDA_MS);
+    return () => clearTimeout(t);
+  }, [repetida]);
 
   const mostrar = (datos: Borrador) => setPanel((p) => ({ datos, id: (p?.id ?? 0) + 1 }));
 
@@ -54,7 +82,8 @@ export function CodigosEstudio({ vivoId, storeId, videoRef, inicial, productos, 
     setVozVista(voz.borrador);
     const nuevo = voz.borrador;
     const repite = nuevo && panel && nuevo.precio === null && normalizarCodigo(panel.datos.palabra) === normalizarCodigo(nuevo.palabra);
-    if (nuevo && !repite) mostrar(nuevo);
+    // Con la hoja de "Darle una prenda" abierta no se abre otra encima: ese borrador se ignora.
+    if (nuevo && !repite && !darA) mostrar(nuevo);
   }
 
   function cerrar() {
@@ -105,6 +134,7 @@ export function CodigosEstudio({ vivoId, storeId, videoRef, inicial, productos, 
         <IndicadorVoz
           estado={voz.estado}
           aviso={voz.aviso}
+          escuche={voz.escuche}
           alCambiar={(prender) => {
             setVozActiva(prender);
             if (prender) voz.reintentar();
@@ -146,6 +176,20 @@ export function CodigosEstudio({ vivoId, storeId, videoRef, inicial, productos, 
           </div>
         </div>
       )}
+      {repetida && (
+        <div className="pointer-events-none absolute inset-x-6 top-1/2 z-20 flex -translate-y-1/2 justify-center">
+          <p
+            key={repetida.vez}
+            role="alert"
+            className="max-w-sm rounded-3xl bg-white px-6 py-5 text-center text-foreground shadow-2xl motion-safe:animate-in motion-safe:zoom-in-95 motion-safe:fade-in motion-safe:duration-(--duracion-base)"
+          >
+            <b className="block text-3xl font-extrabold tracking-wide text-primary">{repetida.palabra}</b>
+            <span className="mt-1 block text-lg font-bold text-pretty">ya lo usaste en este vivo.</span>
+            <span className="block text-base font-semibold text-muted-foreground">Decí otra palabra.</span>
+          </p>
+        </div>
+      )}
+      {darA && <PanelDarPrenda destinataria={darA} codigos={codigos} alCerrar={alTerminarDarA} />}
       {panel && (
         <PanelCodigo
           key={panel.id}

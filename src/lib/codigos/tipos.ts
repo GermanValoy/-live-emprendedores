@@ -41,6 +41,7 @@ export type Pedido = {
   payment_alias: string;
   payment_holder: string;
   buyer_whatsapp: string | null;
+  given_by_owner: boolean;
   status: EstadoPedido;
   cancel_reason: MotivoAnulacion | null;
   deadline: string;
@@ -83,7 +84,7 @@ export const CAMPOS_CODIGO =
 
 /** Columnas de `orders` para `.select(...)`. */
 export const CAMPOS_PEDIDO =
-  "id, claim_id, code_id, store_id, live_session_id, buyer_id, buyer_name, price_cents, delivery_kind, shipping_cents, total_cents, payment_alias, payment_holder, buyer_whatsapp, status, cancel_reason, deadline, created_at, reported_at, confirmed_at, updated_at";
+  "id, claim_id, code_id, store_id, live_session_id, buyer_id, buyer_name, price_cents, delivery_kind, shipping_cents, total_cents, payment_alias, payment_holder, buyer_whatsapp, given_by_owner, status, cancel_reason, deadline, created_at, reported_at, confirmed_at, updated_at";
 
 /** Lo que le pasó a una compradora cuando escribió (o casi escribió) el código en el chat. */
 export type ResultadoReclamo =

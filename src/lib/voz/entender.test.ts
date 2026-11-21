@@ -20,6 +20,30 @@ describe("entender", () => {
     expect(entender(texto)).toEqual({ precio, codigo });
   });
 
+  it.each([
+    ["código rojo, ocho mil", 8000, "ROJO"],
+    ["código rojo ocho mil quinientos", 8500, "ROJO"],
+    ["Código verde, $12.500.", 12500, "VERDE"],
+    ["código sol a 15000", 15000, "SOL"],
+    ["código luna, quinientos pesos", 500, "LUNA"],
+    ["código flor, $800", 800, "FLOR"],
+  ])("precio después del código: %s", (texto, precio, codigo) => {
+    expect(entender(texto)).toEqual({ precio, codigo });
+  });
+
+  it.each([
+    ["código rojo, talle 2", "ROJO"],
+    ["código azul, quedan 3", "AZUL"],
+    ["código sol, en 10 minutos cierro", "SOL"],
+    ["código lila, la número quinientos", "LILA"],
+  ])("después del código, un número que no suena a precio no se toma: %s", (texto, codigo) => {
+    expect(entender(texto)).toEqual({ precio: null, codigo });
+  });
+
+  it("si dice precio antes y después del código, gana el de antes", () => {
+    expect(entender("ocho mil, código rojo, ¡doce mil!")).toEqual({ precio: 8000, codigo: "ROJO" });
+  });
+
   it("sin código ni precio", () => {
     expect(entender("hola chicas cómo están")).toEqual({ precio: null, codigo: null });
   });

@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { borrarMensaje, silenciarEnSala } from "@/app/mi-puesto/vivo/acciones";
 import { Burbuja } from "@/components/chat/burbuja";
 import { PanelModerar } from "@/components/chat/panel-moderar";
+import type { Destinataria } from "@/components/codigos/panel-dar-prenda";
 import { useChat } from "@/components/chat/use-chat";
 import { largoVisible } from "@/lib/chat/moderar";
 import type { ConfigChat, MensajeChat } from "@/lib/chat/tipos";
@@ -17,12 +18,14 @@ type Props = {
   userId: string;
   /** Cuánto subir el chat para dejar libres los botones de abajo. */
   claseBase?: string;
+  /** Si está, el panel de moderar ofrece darle una prenda a quien escribió el mensaje. */
+  alDarPrenda?(destinataria: Destinataria): void;
 };
 
 const AVISAR_DESDE_QUEDAN = 20;
 
 /** Chat de la feriante sobre su cámara. Tocar el mensaje de otra persona abre la moderación. */
-export function ChatEstudio({ vivo, inicial, config, userId, claseBase }: Props) {
+export function ChatEstudio({ vivo, inicial, config, userId, claseBase, alDarPrenda }: Props) {
   const { mensajes, enviar, reintentar, silencio, aviso, canalListo } = useChat(vivo, inicial, null, userId);
   const [texto, setTexto] = useState("");
   const [moderando, setModerando] = useState<{ id: string; userId: string; nombre: string } | null>(null);
@@ -116,6 +119,14 @@ export function ChatEstudio({ vivo, inicial, config, userId, claseBase }: Props)
       {moderando && (
         <PanelModerar
           nombre={moderando.nombre}
+          alDarPrenda={
+            alDarPrenda
+              ? () => {
+                  setModerando(null);
+                  alDarPrenda({ mensajeId: moderando.id, userId: moderando.userId, nombre: moderando.nombre });
+                }
+              : undefined
+          }
           alCerrar={() => setModerando(null)}
           alBorrar={() => void ejecutar(() => borrarMensaje(moderando.id), "Borraste el mensaje.")}
           alSilenciarTemporal={() =>

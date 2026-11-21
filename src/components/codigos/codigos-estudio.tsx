@@ -134,6 +134,7 @@ export function CodigosEstudio({ vivoId, storeId, videoRef, inicial, productos, 
         <IndicadorVoz
           estado={voz.estado}
           aviso={voz.aviso}
+          escuche={voz.escuche}
           alCambiar={(prender) => {
             setVozActiva(prender);
             if (prender) voz.reintentar();

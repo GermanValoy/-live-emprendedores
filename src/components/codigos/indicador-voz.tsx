@@ -6,11 +6,13 @@ type Props = {
   estado: EstadoVoz;
   /** Por qué está apagada sin que ella la haya apagado (límite del día, celular sin audio). */
   aviso: string | null;
+  /** Lo último que entendió la voz. */
+  escuche?: string | null;
   alCambiar(prender: boolean): void;
 };
 
 /** "🎤 Escuchando códigos" con su interruptor. El punto se pone rojo mientras oye una frase. */
-export function IndicadorVoz({ estado, aviso, alCambiar }: Props) {
+export function IndicadorVoz({ estado, aviso, escuche = null, alCambiar }: Props) {
   const prendida = estado !== "apagada";
   const mensaje = estado === "sin-servicio" ? "La voz no responde ahora. Usá + Nuevo código." : aviso;
   return (
@@ -40,6 +42,11 @@ export function IndicadorVoz({ estado, aviso, alCambiar }: Props) {
           />
         </span>
       </button>
+      {escuche && (
+        <p aria-live="polite" className="line-clamp-2 max-w-full rounded-2xl bg-black/65 px-3 py-1.5 text-xs font-semibold text-white backdrop-blur">
+          Escuché: «{escuche}»
+        </p>
+      )}
       {mensaje && (
         <p role="status" className="max-w-full rounded-2xl bg-white px-3 py-2 text-xs font-semibold text-foreground shadow-lg">
           {mensaje}

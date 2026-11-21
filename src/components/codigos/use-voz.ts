@@ -18,6 +18,8 @@ const ERRORES_PARA_CORTAR = 3;
 
 // Fuera del componente: las reglas de React no dejan leer el reloj mientras se dibuja.
 const reloj = () => performance.now();
+/** Cuánto queda a la vista lo último que entendió la voz. */
+const ESCUCHE_MS = 6000;
 const sinSuscripcion = () => () => undefined;
 const hayWebAudio = () => typeof AudioContext !== "undefined";
 
@@ -103,6 +105,8 @@ function armarGrafo(pista: MediaStreamTrack): Grafo {
 export function useVoz({ transmisor, video, vivoId, config, palabrasUsadas, activa, codigoActivo, alRepetida }: Opciones): {
   estado: EstadoVoz;
   aviso: string | null;
+  /** Lo último que entendió la voz, para que la feriante sepa si la escuchó (se borra solo). */
+  escuche: string | null;
   borrador: Borrador | null;
   descartar(): void;
   /** Saca el bloqueo (límite o sin servicio) para volver a probar al prenderla de nuevo. */
@@ -117,6 +121,12 @@ export function useVoz({ transmisor, video, vivoId, config, palabrasUsadas, acti
   const [bloqueo, setBloqueo] = useState<Bloqueo | null>(null);
   const [escuchando, setEscuchando] = useState(false);
   const [borrador, setBorrador] = useState<Borrador | null>(null);
+  const [escuche, setEscuche] = useState<{ texto: string; vez: number } | null>(null);
+  useEffect(() => {
+    if (!escuche) return;
+    const t = setTimeout(() => setEscuche(null), ESCUCHE_MS);
+    return () => clearTimeout(t);
+  }, [escuche]);
   const usadas = useRef(palabrasUsadas);
   useEffect(() => { usadas.current = palabrasUsadas; }, [palabrasUsadas]);
   const activaRef = useRef(codigoActivo);
@@ -174,6 +184,7 @@ export function useVoz({ transmisor, video, vivoId, config, palabrasUsadas, acti
       const { texto } = (await respuesta.json().catch(() => ({}))) as { texto?: string };
       errores = 0;
       if (!texto || !prendida) return;
+      setEscuche((e) => ({ texto: texto.trim(), vez: (e?.vez ?? 0) + 1 }));
       const nuevo = armarBorrador(texto, await foto, usadas.current, activaRef.current);
       if (!nuevo || !prendida) return;
       if ("repetida" in nuevo) repetidaRef.current(nuevo.repetida);
@@ -230,6 +241,7 @@ export function useVoz({ transmisor, video, vivoId, config, palabrasUsadas, acti
   return {
     estado,
     aviso,
+    escuche: estado === "apagada" ? null : (escuche?.texto ?? null),
     borrador,
     descartar: useCallback(() => setBorrador(null), []),
     reintentar: useCallback(() => setBloqueo(null), []),
